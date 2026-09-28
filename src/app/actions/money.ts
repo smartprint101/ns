@@ -72,6 +72,12 @@ export async function cancelCollectionAction(id: string) {
   return run(() => collections.cancelCollection(user, id));
 }
 
+/** নগদ বিক্রয় / সরাসরি কালেকশন এন্ট্রি — কালেকশন হিসাবে সাথে সাথে দেখাবে। */
+export async function createCashSaleAction(input: { title: string; amount: number; accountId: string }) {
+  const user = await requireUser();
+  return run(() => collections.createCashSale(user, input).then((p) => ({ id: p.id })));
+}
+
 // ── Accounts / adjustments ───────────────────────────────────────────────────
 export async function createAdjustmentAction(input: { accountId: string; amount: number; reason: string }) {
   const user = await requireUser();

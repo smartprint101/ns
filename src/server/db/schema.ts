@@ -92,6 +92,8 @@ export const regularCustomers = pgTable(
     phone: varchar("phone", { length: 40 }),
     address: text("address"),
     notes: text("notes"),
+    /** বকেয়া পেজে "নিচে পাঠানো" — সেট থাকলে এই কাস্টমার লিস্টের নিচে থাকবে। */
+    duesDemotedAt: ts("dues_demoted_at"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -143,9 +145,9 @@ export const regularOrders = pgTable(
     customerId: text("customer_id")
       .notNull()
       .references(() => regularCustomers.id),
-    productName: varchar("product_name", { length: 250 }).notNull(),
-    quantity: kg("quantity").notNull(),
-    price: money("price").notNull(),
+    productName: varchar("product_name", { length: 250 }),
+    quantity: kg("quantity"),
+    price: money("price"),
     deliveryCharge: money("delivery_charge").notNull().default(0),
     totalAmount: money("total_amount").notNull(),
     address: text("address"),
@@ -188,9 +190,7 @@ export const packagingOrders = pgTable(
     extraKg: kg("extra_kg").notNull().default(0),
     finalKg: kg("final_kg").notNull(),
     totalBill: money("total_bill").notNull(),
-    factoryId: text("factory_id")
-      .notNull()
-      .references(() => factories.id),
+    factoryId: text("factory_id").references(() => factories.id),
     cylinderId: text("cylinder_id").references(() => cylinders.id),
     notes: text("notes"),
     stage: packagingStageEnum("stage").notNull().default("PLACED"),
@@ -271,6 +271,8 @@ export const payments = pgTable(
     customerId: text("customer_id").references(() => regularCustomers.id),
     source: paymentSourceEnum("source").notNull().default("MANUAL"),
     isAdvance: boolean("is_advance").notNull().default(false),
+    /** কালেকশন পেজের হিসাবে দেখাবে কি না ("কালেকশনে এড হবে" টগল)। */
+    inCollections: boolean("in_collections").notNull().default(false),
     date: ts("date").notNull().defaultNow(),
     notes: text("notes"),
     voidedAt: ts("voided_at"),
@@ -372,6 +374,8 @@ export const tasks = pgTable(
     description: text("description"),
     status: taskStatusEnum("status").notNull().default("PENDING"),
     completionNote: text("completion_note"),
+    /** অটো-টাস্ক লিংক: "নতুন অর্ডারের স্লিপ করো" শেষ হলে অর্ডারের ধাপ এগোয়। */
+    regularOrderId: text("regular_order_id").references(() => regularOrders.id),
     completedAt: ts("completed_at"),
     cancelledAt: ts("cancelled_at"),
     assignedToId: text("assigned_to_id")

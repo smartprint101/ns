@@ -11,7 +11,8 @@ export const dynamic = "force-dynamic";
 
 const stageTone: Record<string, "blue" | "amber" | "violet" | "red" | "green"> = {
   PLACED: "blue",
-  READY: "amber",
+  READY: "violet",
+  COURIER_GIVEN: "amber",
   CONDITION_PENDING: "red",
   COMPLETED: "green",
 };
@@ -24,28 +25,30 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
   return (
     <div>
       <PageHead
-        title="রেগুলার অর্ডার"
+        title={tab === "active" ? "পেন্ডিং রেগুলার অর্ডার" : "রেগুলার অর্ডার"}
         sub={tab === "active" ? "পুরোনো পেন্ডিং সবার উপরে" : undefined}
         right={<LinkButton href="/orders/new">+ নতুন অর্ডার</LinkButton>}
       />
       <Tabs
         current={tab}
         tabs={[
-          { key: "active", label: "চলমান" },
-          { key: "completed", label: "সম্পন্ন" },
+          { key: "active", label: "পেন্ডিং" },
+          { key: "completed", label: "হিস্ট্রি" },
           { key: "cancelled", label: "বাতিল" },
         ]}
       />
-      <SearchBox placeholder="অর্ডার নম্বর / পণ্য / কাস্টমার / ফোন…" defaultValue={sp.q} hidden={{ tab }} />
+      <SearchBox placeholder="অর্ডার নম্বর / কাস্টমার / ফোন…" defaultValue={sp.q} hidden={{ tab }} />
 
       {rows.length === 0 ? (
-        <Empty text={sp.q ? "এই খোঁজে কিছু পাওয়া যায়নি" : tab === "active" ? "কোনো চলমান অর্ডার নেই" : "কিছু নেই"}>
+        <Empty text={sp.q ? "এই খোঁজে কিছু পাওয়া যায়নি" : tab === "active" ? "কোনো পেন্ডিং অর্ডার নেই" : "কিছু নেই"}>
           {tab === "active" && <LinkButton href="/orders/new" size="sm" variant="subtle">+ নতুন অর্ডার দিন</LinkButton>}
         </Empty>
       ) : (
         <ul className="space-y-2">
           {rows.map(({ order, customer, paid }) => {
             const due = Math.round((order.totalAmount - paid) * 100) / 100;
+            const stageLabel =
+              order.stage === "COURIER_GIVEN" && due > 0 && order.status === "ACTIVE" ? "বকেয়া" : REGULAR_STAGE_BN[order.stage];
             return (
               <li key={order.id}>
                 <Link
@@ -58,15 +61,16 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
                         #{bn(order.orderNo)} · {customer.name}
                         {order.hasCondition && tab === "active" && <span className="ml-1.5 text-xs font-bold text-amber-600">কন্ডিশন</span>}
                       </p>
-                      <p className="mt-0.5 truncate text-[13px] text-slate-600">{order.productName} × {bn(order.quantity)}</p>
+                      {customer.phone && <p className="mt-0.5 text-[13px] text-slate-500">{customer.phone}</p>}
                     </div>
                     {tab === "active" && <AgeChip from={order.createdAt} />}
                   </div>
                   <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2">
                     <div className="flex flex-wrap items-center gap-1.5">
-                      <Badge tone={stageTone[order.stage] ?? "slate"}>{REGULAR_STAGE_BN[order.stage]}</Badge>
+                      <Badge tone={stageTone[order.stage] ?? "slate"}>{stageLabel}</Badge>
                       {order.status !== "ACTIVE" && <Badge tone={order.status === "COMPLETED" ? "green" : "red"}>{STATUS_BN[order.status]}</Badge>}
-                      {due > 0 && tab === "active" && <Badge tone="red">বাকি {bnMoney(due)}</Badge>}
+                      {paid > 0 && <Badge tone="green">জমা {bnMoney(paid)}</Badge>}
+                      {due > 0 && tab === "active" && <Badge tone="red">বকেয়া {bnMoney(due)}</Badge>}
                       {paid > 0 && tab === "active" && due <= 0 && <Badge tone="green">পরিশোধিত</Badge>}
                     </div>
                     <div className="text-right">

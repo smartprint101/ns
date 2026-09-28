@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPackagingOrder } from "@/server/services/packaging-orders";
-import { listFactories, listCylinders } from "@/server/services/masters";
+import { listFactories } from "@/server/services/masters";
+import { listAccountsWithBalances } from "@/server/services/accounts";
 import { PageHead } from "@/components/page-head";
 import { Badge, Card, CardTitle, Empty, LinkButton } from "@/components/ui";
 import { AgeChip } from "@/components/age-chip";
-import { AdvanceStageButton, CancelOrderButton, EditPackagingOrderButton } from "@/components/forms/order-actions";
-import { PACKAGING_STAGE_BN, STATUS_BN, WORK_TYPE_BN, EXPENSE_CATEGORY_BN, PACKAGING_FLOWS, nextPackagingStage } from "@/lib/labels";
+import { PackagingAdvanceButton, CancelOrderButton, EditPackagingOrderButton, ExtraBillButton } from "@/components/forms/order-actions";
+import { packagingStageLabel, STATUS_BN, WORK_TYPE_BN, EXPENSE_CATEGORY_BN, PACKAGING_FLOWS, nextPackagingStage } from "@/lib/labels";
 import { bnMoney, bn } from "@/lib/bn";
 import { fmtDate, fmtDateTime, fmtDateShort } from "@/lib/dates";
 import { VoidPaymentButton, VoidExpenseButton } from "@/components/forms/money-actions";
@@ -16,19 +17,14 @@ export const dynamic = "force-dynamic";
 
 export default async function PackagingOrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [data, factories, cylinders] = await Promise.all([getPackagingOrder(id), listFactories(), listCylinders()]);
+  const [data, factories, accounts] = await Promise.all([getPackagingOrder(id), listFactories(), listAccountsWithBalances()]);
   if (!data) notFound();
   const { order, paid, advance, payments, expenses, events } = data;
   const due = Math.round((order.totalBill - paid) * 100) / 100;
   const flow = PACKAGING_FLOWS[order.workType] ?? [];
   const currentIdx = flow.indexOf(order.stage);
   const next = order.status === "ACTIVE" ? nextPackagingStage(order) : null;
-  const nextLabel =
-    next && order.stage !== "PLACED"
-      ? `→ ${PACKAGING_STAGE_BN[next]}`
-      : next === "ADVANCE"
-        ? null // advance happens via payment
-        : null;
+  const nextLabel = next ? `→ ${packagingStageLabel(order.workType, next)}` : null;
 
   return (
     <div className="mx-auto max-w-3xl space-y-4">
@@ -72,7 +68,7 @@ export default async function PackagingOrderDetailPage({ params }: { params: Pro
                   )}
                 >
                   {done ? "✓ " : ""}
-                  {PACKAGING_STAGE_BN[stage]}
+                  {packagingStageLabel(order.workType, stage)}
                 </span>
               );
             })}
@@ -80,11 +76,9 @@ export default async function PackagingOrderDetailPage({ params }: { params: Pro
         </div>
 
         <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-2 border-t border-slate-100 pt-3 text-sm sm:grid-cols-3">
-          <Info label="মোট কেজি" value={`${bn(order.totalKg)} কেজি`} />
-          <Info label="এক্সট্রা কেজি" value={`${bn(order.extraKg)} কেজি`} highlight={order.extraKg > 0} />
-          <Info label="ফাইনাল কেজি" value={`${bn(order.finalKg)} কেজি`} />
-          <Info label="ফ্যাক্টরি" value={order.factory.name} />
-          <Info label="সিলিন্ডার" value={order.cylinder ? `${order.cylinder.name} (${order.cylinder.factory.name})` : "—"} />
+          <Info label="কেজি" value={`${bn(order.totalKg)} কেজি`} />
+          <Info label="টোটাল বিল" value={bnMoney(order.totalBill)} />
+          <Info label="কারখানা" value={order.factory?.name ?? "পরে ঠিক হবে"} highlight={!order.factory} />
           {order.completedAt && <Info label="সম্পন্ন হয়েছে" value={fmtDateTime(order.completedAt)} />}
         </div>
         {order.notes && <p className="mt-3 rounded-xl bg-slate-50 px-3 py-2 text-sm text-slate-600 ring-1 ring-inset ring-slate-100">📝 {order.notes}</p>}
@@ -95,13 +89,22 @@ export default async function PackagingOrderDetailPage({ params }: { params: Pro
         <Card>
           <CardTitle>কাজ করুন</CardTitle>
           <div className="space-y-2.5">
-            {order.stage === "PLACED" && (
+            {order.stage === "DELIVERED" && due > 0 && (
               <p className="rounded-xl bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-700 ring-1 ring-inset ring-amber-200">
-                অ্যাডভান্স না নিলে কাজ শুরু হয় না — নিচে «পেমেন্ট যোগ করুন» দিয়ে অ্যাডভান্স এন্ট্রি করুন
+                কুরিয়ারে পাঠানো হয়েছে — বকেয়া {bnMoney(due)}। টাকা পেলে «৳ পেমেন্ট যোগ» করুন, পুরো টাকা পেলে অর্ডার নিজেই হিস্ট্রিতে যাবে।
               </p>
             )}
-            {nextLabel && <AdvanceStageButton kind="packaging" id={order.id} label={nextLabel} />}
-            {order.stage === "DELIVERED" && <AdvanceStageButton kind="packaging" id={order.id} label="✓ সম্পন্ন করুন" />}
+            {next && nextLabel && (
+              <PackagingAdvanceButton
+                orderId={order.id}
+                nextStage={next}
+                label={nextLabel}
+                factories={factories}
+                currentFactoryId={order.factoryId}
+                accounts={accounts}
+                due={due}
+              />
+            )}
             <div className="flex flex-wrap gap-2">
               <LinkButton href={`/payments/new?party=${order.partyId}`} variant="subtle" size="md">
                 ৳ পেমেন্ট যোগ
@@ -109,12 +112,8 @@ export default async function PackagingOrderDetailPage({ params }: { params: Pro
               <LinkButton href={`/expenses/new?packagingOrderId=${order.id}`} variant="subtle" size="md">
                 খরচ যোগ
               </LinkButton>
-              <EditPackagingOrderButton
-                orderId={order.id}
-                order={order}
-                factories={factories}
-                cylinders={cylinders.map((c) => ({ id: c.id, name: c.name, factoryId: c.factoryId, factoryName: c.factory.name }))}
-              />
+              <ExtraBillButton orderId={order.id} />
+              <EditPackagingOrderButton orderId={order.id} order={order} factories={factories} />
               <CancelOrderButton kind="packaging" id={order.id} label="বাতিল" />
             </div>
           </div>

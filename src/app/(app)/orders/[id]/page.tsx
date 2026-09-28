@@ -14,7 +14,8 @@ export const dynamic = "force-dynamic";
 
 const stageTone: Record<string, "blue" | "amber" | "red" | "green" | "violet"> = {
   PLACED: "blue",
-  READY: "amber",
+  READY: "violet",
+  COURIER_GIVEN: "amber",
   CONDITION_PENDING: "red",
   COMPLETED: "green",
 };
@@ -29,11 +30,13 @@ export default async function RegularOrderDetailPage({ params }: { params: Promi
   const nextLabel =
     order.status === "ACTIVE"
       ? order.stage === "PLACED"
-        ? "✓ প্রোডাক্ট রেডি"
+        ? "✓ স্লিপ তৈরি হয়েছে"
         : order.stage === "READY"
           ? order.hasCondition
-            ? "🚚 কুরিয়ার দেওয়া হলো (কন্ডিশন পেন্ডিং হবে)"
-            : "🚚 কুরিয়ার দেওয়া হলো — সম্পন্ন করুন"
+            ? "🚚 কুরিয়ারে পাঠানো হলো (কন্ডিশন বকেয়া হবে)"
+            : due > 0
+              ? "🚚 কুরিয়ারে পাঠানো হলো (বকেয়া থাকবে)"
+              : "🚚 কুরিয়ারে পাঠানো হলো — সম্পন্ন"
           : null
       : null;
 
@@ -63,12 +66,10 @@ export default async function RegularOrderDetailPage({ params }: { params: Promi
           {order.status === "ACTIVE" && <AgeChip from={order.createdAt} />}
         </div>
         <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 border-t border-slate-100 pt-3 text-sm sm:grid-cols-3">
-          <Info label="পণ্য" value={order.productName} />
-          <Info label="পরিমাণ" value={bn(order.quantity)} />
-          <Info label="দাম" value={bnMoney(order.price)} />
-          <Info label="ডেলিভারি চার্জ" value={bnMoney(order.deliveryCharge)} />
+          <Info label="মোট টাকা" value={bnMoney(order.totalAmount)} />
           <Info label="কন্ডিশন" value={order.hasCondition ? "আছে" : "নেই"} highlight={order.hasCondition} />
-          {order.courierGivenAt && <Info label="কুরিয়ার দেওয়া" value={fmtDateTime(order.courierGivenAt)} />}
+          {order.productName && <Info label="পণ্য" value={order.productName} />}
+          {order.courierGivenAt && <Info label="কুরিয়ারে পাঠানো" value={fmtDateTime(order.courierGivenAt)} />}
         </div>
         {order.notes && <p className="mt-3 rounded-xl bg-slate-50 px-3 py-2 text-sm text-slate-600 ring-1 ring-inset ring-slate-100">📝 {order.notes}</p>}
       </Card>
@@ -82,6 +83,11 @@ export default async function RegularOrderDetailPage({ params }: { params: Promi
             {order.stage === "CONDITION_PENDING" && (
               <LinkButton href={`/conditions`} variant="primary" size="lg" full>
                 ৳ কন্ডিশন রিসিভ করুন ({bnMoney(order.totalAmount)} আসার কথা)
+              </LinkButton>
+            )}
+            {order.stage === "COURIER_GIVEN" && due > 0 && (
+              <LinkButton href={`/payments/new?customer=${order.customerId}`} variant="primary" size="lg" full>
+                ৳ বকেয়া {bnMoney(due)} — টাকা পেলে এন্ট্রি করুন
               </LinkButton>
             )}
             <div className="flex flex-wrap gap-2">

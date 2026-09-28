@@ -5,7 +5,7 @@ import { Button, Field, Input, Textarea, Spinner } from "@/components/ui";
 import { Sheet, ConfirmSheet } from "@/components/sheet";
 import { AccountChips } from "./account-chips";
 import { useSubmit } from "./use-submit";
-import { createCollectionAction, receiveCollectionAction, cancelCollectionAction } from "@/app/actions/money";
+import { createCollectionAction, receiveCollectionAction, cancelCollectionAction, createCashSaleAction } from "@/app/actions/money";
 import { bnMoney } from "@/lib/bn";
 import { toast } from "sonner";
 
@@ -140,5 +140,54 @@ export function CollectionActions({
         danger
       />
     </div>
+  );
+}
+
+/** নগদ বিক্রয় / সরাসরি টাকা জমার দ্রুত এন্ট্রি — কালেকশন হিসাবে সাথে সাথে উঠবে। */
+export function CashSaleButton({ accounts }: { accounts: AccountRow[] }) {
+  const { pending, submit, refresh } = useSubmit();
+  const [open, setOpen] = React.useState(false);
+  const [title, setTitle] = React.useState("নগদ বিক্রয়");
+  const [amount, setAmount] = React.useState("");
+  const [accountId, setAccountId] = React.useState("");
+  const amt = Number(amount) || 0;
+
+  return (
+    <>
+      <Button variant="secondary" size="md" onClick={() => setOpen(true)}>
+        ৳ নগদ বিক্রয়
+      </Button>
+      <Sheet open={open} onClose={() => setOpen(false)} title="নগদ বিক্রয় / টাকা জমা">
+        <div className="space-y-4">
+          <Field label="বিবরণ" required hint="যেমন: নগদ বিক্রয় — দোকান">
+            <Input value={title} onChange={(e) => setTitle(e.target.value)} autoFocus />
+          </Field>
+          <Field label="কত টাকা (৳)" required>
+            <Input value={amount} onChange={(e) => setAmount(e.target.value)} inputMode="decimal" placeholder="০" />
+          </Field>
+          <Field label="টাকা কোথায় জমা হলো" required>
+            <AccountChips accounts={accounts} value={accountId} onChange={setAccountId} />
+          </Field>
+          <Button
+            full
+            size="lg"
+            disabled={pending || amt <= 0 || !accountId || title.trim().length < 2}
+            onClick={() =>
+              submit(() => createCashSaleAction({ title: title.trim(), amount: amt, accountId }), {
+                success: "কালেকশনে এড হয়েছে",
+                onOk: () => {
+                  setOpen(false);
+                  setAmount("");
+                  setAccountId("");
+                  refresh();
+                },
+              })
+            }
+          >
+            {pending ? <Spinner /> : null} সেভ করুন ({bnMoney(amt)})
+          </Button>
+        </div>
+      </Sheet>
+    </>
   );
 }
