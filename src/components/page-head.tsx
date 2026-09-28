@@ -4,10 +4,10 @@ import { bn } from "@/lib/bn";
 
 export function PageHead({ title, sub, right }: { title: string; sub?: string; right?: React.ReactNode }) {
   return (
-    <div className="mb-4 flex items-start justify-between gap-3">
+    <div className="mb-4 flex items-start justify-between gap-3 border-l-[3px] border-brand-500 pl-3">
       <div>
-        <h1 className="text-xl font-extrabold tracking-tight text-slate-900">{title}</h1>
-        {sub && <p className="mt-0.5 text-sm text-slate-500">{sub}</p>}
+        <h1 className="text-xl font-extrabold leading-tight tracking-tight text-slate-950">{title}</h1>
+        {sub && <p className="mt-1 text-sm leading-relaxed text-slate-600">{sub}</p>}
       </div>
       {right}
     </div>
@@ -29,7 +29,9 @@ export function Tabs({
           href={`?tab=${t.key}`}
           className={cn(
             "flex-1 whitespace-nowrap rounded-xl px-3 py-2 text-center text-[13px] font-bold transition",
-            current === t.key ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
+            current === t.key
+              ? "bg-white text-brand-800 shadow-sm ring-1 ring-inset ring-brand-100"
+              : "text-slate-500 hover:bg-white/60 hover:text-slate-800"
           )}
         >
           {t.label}

@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import "@fontsource-variable/noto-sans-bengali/wght.css";
 import "./globals.css";
 import { Toaster } from "sonner";
 import { SwRegister } from "@/components/sw-register";
@@ -12,7 +13,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#1c5344",
+  themeColor: "#11664f",
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",

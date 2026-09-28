@@ -9,12 +9,13 @@ type BtnVariant = "primary" | "secondary" | "ghost" | "danger" | "subtle" | "out
 type BtnSize = "sm" | "md" | "lg" | "xl";
 
 const btnVariants: Record<BtnVariant, string> = {
-  primary: "bg-brand-700 text-white hover:bg-brand-800 active:bg-brand-900 shadow-sm",
-  secondary: "bg-white text-slate-800 border border-slate-300 hover:bg-slate-50",
-  ghost: "text-slate-600 hover:bg-slate-100",
-  danger: "bg-red-600 text-white hover:bg-red-700 shadow-sm",
-  subtle: "bg-brand-50 text-brand-800 hover:bg-brand-100",
-  outlineDanger: "bg-white text-red-700 border border-red-200 hover:bg-red-50",
+  primary:
+    "border border-brand-800/20 bg-brand-700 text-white shadow-[0_4px_12px_rgba(17,102,79,0.20)] hover:bg-brand-800 hover:shadow-[0_6px_16px_rgba(17,102,79,0.24)] active:bg-brand-900",
+  secondary: "border border-slate-300 bg-white text-slate-800 shadow-sm hover:border-slate-400 hover:bg-slate-50",
+  ghost: "text-slate-600 hover:bg-slate-100 hover:text-slate-900",
+  danger: "border border-red-700/20 bg-red-600 text-white shadow-[0_4px_12px_rgba(220,38,38,0.16)] hover:bg-red-700",
+  subtle: "border border-brand-200 bg-brand-50 text-brand-800 hover:border-brand-300 hover:bg-brand-100",
+  outlineDanger: "border border-red-200 bg-white text-red-700 hover:border-red-300 hover:bg-red-50",
 };
 const btnSizes: Record<BtnSize, string> = {
   sm: "h-9 px-3 text-[13px] rounded-lg",
@@ -34,7 +35,7 @@ export function Button({ variant = "primary", size = "md", full, className, type
     <button
       type={type ?? "button"}
       className={cn(
-        "inline-flex items-center justify-center gap-2 font-semibold transition disabled:opacity-50 disabled:pointer-events-none select-none",
+        "inline-flex items-center justify-center gap-2 font-bold transition duration-200 disabled:pointer-events-none disabled:opacity-50 active:translate-y-px select-none",
         btnVariants[variant],
         btnSizes[size],
         full && "w-full",
@@ -64,7 +65,7 @@ export function LinkButton({
     <Link
       href={href}
       className={cn(
-        "inline-flex items-center justify-center gap-2 font-semibold transition select-none",
+        "inline-flex items-center justify-center gap-2 font-bold transition duration-200 active:translate-y-px select-none",
         btnVariants[variant],
         btnSizes[size],
         full && "w-full",
@@ -79,7 +80,7 @@ export function LinkButton({
 // ── Card ────────────────────────────────────────────────────────────────────
 export function Card({ className, children }: { className?: string; children: React.ReactNode }) {
   return (
-    <div className={cn("rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)]", className)}>
+    <div className={cn("rounded-2xl border border-slate-200/90 bg-white p-4 shadow-[0_1px_3px_rgba(15,23,42,0.05),0_8px_24px_rgba(15,23,42,0.025)]", className)}>
       {children}
     </div>
   );
@@ -199,20 +200,57 @@ export function Stat({
   tone?: Tone;
   href?: string;
 }) {
-  const toneText: Record<Tone, string> = {
-    slate: "text-slate-900",
-    green: "text-emerald-700",
-    amber: "text-amber-700",
-    red: "text-red-700",
-    blue: "text-sky-700",
-    violet: "text-violet-700",
-    teal: "text-teal-700",
+  const toneStyles: Record<Tone, { card: string; label: string; value: string; accent: string }> = {
+    slate: {
+      card: "border-slate-200 bg-white hover:border-slate-300",
+      label: "text-slate-500",
+      value: "text-slate-900",
+      accent: "bg-slate-300",
+    },
+    green: {
+      card: "border-emerald-200/80 bg-emerald-50/70 hover:border-emerald-300",
+      label: "text-emerald-800/70",
+      value: "text-emerald-800",
+      accent: "bg-emerald-500",
+    },
+    amber: {
+      card: "border-amber-200/90 bg-amber-50/75 hover:border-amber-300",
+      label: "text-amber-800/70",
+      value: "text-amber-800",
+      accent: "bg-amber-500",
+    },
+    red: {
+      card: "border-rose-200/90 bg-rose-50/70 hover:border-rose-300",
+      label: "text-rose-800/70",
+      value: "text-rose-700",
+      accent: "bg-rose-500",
+    },
+    blue: {
+      card: "border-sky-200/90 bg-sky-50/75 hover:border-sky-300",
+      label: "text-sky-800/70",
+      value: "text-sky-800",
+      accent: "bg-sky-500",
+    },
+    violet: {
+      card: "border-violet-200/90 bg-violet-50/75 hover:border-violet-300",
+      label: "text-violet-800/70",
+      value: "text-violet-800",
+      accent: "bg-violet-500",
+    },
+    teal: {
+      card: "border-teal-200/90 bg-teal-50/75 hover:border-teal-300",
+      label: "text-teal-800/70",
+      value: "text-teal-800",
+      accent: "bg-teal-500",
+    },
   };
+  const style = toneStyles[tone];
   const inner = (
-    <Card className="h-full p-3.5 transition hover:border-slate-300">
-      <p className="text-xs font-semibold text-slate-500">{label}</p>
-      <p className={cn("mt-1 text-xl font-extrabold leading-tight tracking-tight", toneText[tone])}>{value}</p>
-      {sub && <div className="mt-1 text-xs text-slate-500">{sub}</div>}
+    <Card className={cn("relative h-full overflow-hidden p-3.5 transition duration-200", style.card)}>
+      <span className={cn("absolute inset-y-3 left-0 w-1 rounded-r-full", style.accent)} aria-hidden="true" />
+      <p className={cn("pl-1 text-xs font-bold", style.label)}>{label}</p>
+      <p className={cn("mt-1 pl-1 text-xl font-extrabold leading-tight tracking-tight", style.value)}>{value}</p>
+      {sub && <div className="mt-1 pl-1 text-xs leading-relaxed text-slate-600">{sub}</div>}
     </Card>
   );
   return href ? <Link href={href}>{inner}</Link> : inner;

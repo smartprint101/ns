@@ -5,25 +5,26 @@ export default {
   theme: {
     extend: {
       colors: {
+        // Higher-contrast green that stays close to the logo. Brand is used
+        // for navigation/primary actions; status colours retain their meaning.
         brand: {
-          50: "#eef7f3",
-          100: "#d6ece2",
-          200: "#afd8c7",
-          300: "#7dbda6",
-          400: "#4b9e82",
-          500: "#2e8267",
-          600: "#216852",
-          700: "#1c5344",
-          800: "#174337",
-          900: "#12372e",
-          950: "#091f1a",
+          50: "#effcf6",
+          100: "#d9f7e9",
+          200: "#b5ecd4",
+          300: "#7dd9b5",
+          400: "#45bd91",
+          500: "#249f76",
+          600: "#167f5f",
+          700: "#11664f",
+          800: "#10513f",
+          900: "#0d4335",
+          950: "#06261e",
         },
       },
       fontFamily: {
         sans: [
-          '"Hind Siliguri"',
+          '"Noto Sans Bengali Variable"',
           '"Noto Sans Bengali"',
-          '"Noto Sans"',
           "system-ui",
           "-apple-system",
           "'Segoe UI'",

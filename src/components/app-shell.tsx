@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { logoutAction } from "@/app/actions/auth";
 import { Sheet } from "./sheet";
@@ -37,26 +37,28 @@ export function AppShell({
   return (
     <div className="min-h-dvh lg:pl-64">
       {/* ── Desktop sidebar ── */}
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-slate-200 bg-white lg:flex">
-        <div className="flex items-center gap-2.5 border-b border-slate-100 px-4 py-4">
-          <Image src="/icons/icon-192.png" alt="এনএস" width={36} height={36} className="rounded-lg" />
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-brand-900 bg-brand-950 text-white shadow-[8px_0_30px_rgba(6,38,30,0.08)] lg:flex">
+        <div className="flex items-center gap-2.5 border-b border-white/10 px-4 py-4">
+          <Image src="/icons/icon-192.png" alt="এনএস" width={38} height={38} className="rounded-xl ring-1 ring-white/20" />
           <div>
-            <p className="text-[15px] font-extrabold leading-tight text-slate-900">এনএস ট্রেডার্স</p>
-            <p className="text-[11px] text-slate-500">ব্যবসা ব্যবস্থাপনা</p>
+            <p className="text-[15px] font-extrabold leading-tight text-white">এনএস ট্রেডার্স</p>
+            <p className="mt-0.5 text-[11px] text-brand-100/65">ব্যবসা ব্যবস্থাপনা</p>
           </div>
         </div>
         <nav className="flex-1 overflow-y-auto px-3 py-3">
           {groups.map((g, i) => (
             <div key={i} className="mb-4">
-              {g.title && <p className="mb-1.5 px-2 text-[11px] font-bold uppercase tracking-wide text-slate-400">{g.title}</p>}
+              {g.title && <p className="mb-1.5 px-2 text-[11px] font-bold uppercase tracking-wide text-brand-100/45">{g.title}</p>}
               <ul className="space-y-0.5">
                 {g.links.map((l) => (
                   <li key={l.href}>
                     <Link
                       href={l.href}
                       className={cn(
-                        "flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-semibold transition",
-                        isActive(l.href) ? "bg-brand-700 text-white shadow-sm" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                        "flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-bold transition duration-200",
+                        isActive(l.href)
+                          ? "bg-white text-brand-950 shadow-[0_4px_14px_rgba(0,0,0,0.16)]"
+                          : "text-brand-50/70 hover:bg-white/10 hover:text-white"
                       )}
                     >
                       <Icon name={l.icon} className="h-[18px] w-[18px]" />
@@ -68,14 +70,14 @@ export function AppShell({
             </div>
           ))}
         </nav>
-        <div className="border-t border-slate-100 p-3">
-          <div className="flex items-center gap-2.5 rounded-xl bg-slate-50 px-3 py-2.5">
-            <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-brand-700 text-sm font-bold text-white">
+        <div className="border-t border-white/10 p-3">
+          <div className="flex items-center gap-2.5 rounded-xl bg-white/[0.07] px-3 py-2.5 ring-1 ring-inset ring-white/[0.06]">
+            <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-brand-300 text-sm font-extrabold text-brand-950">
               {user.name.slice(0, 1)}
             </div>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-bold text-slate-800">{user.name}</p>
-              <p className="text-[11px] text-slate-500">{user.role === "OWNER" ? "Owner/Admin" : "স্টাফ"}</p>
+              <p className="truncate text-sm font-bold text-white">{user.name}</p>
+              <p className="text-[11px] text-brand-100/60">{user.role === "OWNER" ? "Owner/Admin" : "স্টাফ"}</p>
             </div>
             <button
               aria-label="লগ আউট"
@@ -84,7 +86,7 @@ export function AppShell({
                 setLoggingOut(true);
                 await logoutAction();
               }}
-              className="grid h-10 w-10 place-items-center rounded-lg text-slate-400 hover:bg-white hover:text-red-600"
+              className="grid h-10 w-10 place-items-center rounded-lg text-brand-100/55 hover:bg-white/10 hover:text-red-300"
             >
               {loggingOut ? <Spinner /> : <Icon name="logout" className="h-5 w-5" />}
             </button>
@@ -93,25 +95,25 @@ export function AppShell({
       </aside>
 
       {/* ── Top bar (mobile + desktop) ── */}
-      <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/95 backdrop-blur">
+      <header className="sticky top-0 z-20 border-b border-brand-100/80 bg-white/90 shadow-[0_1px_10px_rgba(15,23,42,0.04)] backdrop-blur-xl">
         <div className="flex h-14 items-center gap-2 px-3 lg:px-6">
           <Link href="/" className="flex items-center gap-2 lg:hidden">
-            <Image src="/icons/icon-192.png" alt="এনএস" width={30} height={30} className="rounded-lg" />
-            <span className="text-[15px] font-extrabold text-slate-900">এনএস ট্রেডার্স</span>
+            <Image src="/icons/icon-192.png" alt="এনএস" width={31} height={31} className="rounded-lg ring-1 ring-brand-900/10" />
+            <span className="text-[15px] font-extrabold text-brand-950">এনএস ট্রেডার্স</span>
           </Link>
           <div className="hidden flex-1 lg:block" />
           <div className="ml-auto flex items-center gap-1">
             <Link
               href="/search"
               aria-label="সার্চ"
-              className="grid h-11 w-11 place-items-center rounded-xl text-slate-500 hover:bg-slate-100"
+              className="grid h-11 w-11 place-items-center rounded-xl text-slate-500 transition hover:bg-brand-50 hover:text-brand-800"
             >
               <Icon name="search" className="h-5 w-5" />
             </Link>
             <Link
               href="/notifications"
               aria-label="নোটিফিকেশন"
-              className="relative grid h-11 w-11 place-items-center rounded-xl text-slate-500 hover:bg-slate-100"
+              className="relative grid h-11 w-11 place-items-center rounded-xl text-slate-500 transition hover:bg-brand-50 hover:text-brand-800"
             >
               <Icon name="bell" className="h-5 w-5" />
               {unreadCount > 0 && (
@@ -137,26 +139,33 @@ export function AppShell({
       <main className="mx-auto w-full max-w-6xl px-3 pb-24 pt-4 lg:px-6 lg:pb-10">{children}</main>
 
       {/* ── Mobile bottom nav ── */}
-      <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white lg:hidden safe-bottom">
+      <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-brand-100 bg-white/95 shadow-[0_-8px_24px_rgba(15,23,42,0.05)] backdrop-blur-xl lg:hidden safe-bottom">
         <div className="grid grid-cols-5">
-          {bottomNav.map((l) => (
-            <Link
-              key={l.href}
-              href={l.href}
-              className={cn(
-                "flex flex-col items-center gap-0.5 py-2 text-[11px] font-semibold transition",
-                isActive(l.href) ? "text-brand-700" : "text-slate-500"
-              )}
-            >
-              <Icon name={l.icon} className="h-5 w-5" />
-              {l.label}
-            </Link>
-          ))}
+          {bottomNav.map((l) => {
+            const active = isActive(l.href);
+            return (
+              <Link
+                key={l.href}
+                href={l.href}
+                className={cn(
+                  "flex flex-col items-center gap-0.5 py-1.5 text-[11px] font-bold transition",
+                  active ? "text-brand-800" : "text-slate-500"
+                )}
+              >
+                <span className={cn("grid h-7 w-10 place-items-center rounded-full transition", active && "bg-brand-100")}>
+                  <Icon name={l.icon} className="h-[19px] w-[19px]" />
+                </span>
+                {l.label}
+              </Link>
+            );
+          })}
           <button
             onClick={() => setMoreOpen(true)}
-            className={cn("flex flex-col items-center gap-0.5 py-2 text-[11px] font-semibold", moreOpen ? "text-brand-700" : "text-slate-500")}
+            className={cn("flex flex-col items-center gap-0.5 py-1.5 text-[11px] font-bold", moreOpen ? "text-brand-800" : "text-slate-500")}
           >
-            <Icon name="menu" className="h-5 w-5" />
+            <span className={cn("grid h-7 w-10 place-items-center rounded-full transition", moreOpen && "bg-brand-100")}>
+              <Icon name="menu" className="h-[19px] w-[19px]" />
+            </span>
             আরও
           </button>
         </div>
@@ -175,7 +184,10 @@ export function AppShell({
                 isActive(l.href) ? "border-brand-300 bg-brand-50 text-brand-800" : "text-slate-700 hover:bg-slate-50"
               )}
             >
-              <Icon name={l.icon} className="h-[18px] w-[18px] text-slate-400" />
+              <Icon
+                name={l.icon}
+                className={cn("h-[18px] w-[18px]", isActive(l.href) ? "text-brand-700" : "text-slate-400")}
+              />
               {l.label}
             </Link>
           ))}
