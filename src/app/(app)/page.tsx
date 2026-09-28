@@ -60,11 +60,11 @@ export default async function DashboardPage() {
   ];
 
   const workStats = [
-    { label: "নতুন রেগুলার অর্ডার", value: d.work.newOrders, href: "/orders", tone: d.work.newOrders > 0 ? ("blue" as const) : ("slate" as const) },
-    { label: "চলমান রেগুলার অর্ডার", value: d.work.activeRegular, href: "/orders", tone: "slate" as const },
-    { label: "কুরিয়ার পেন্ডিং", value: d.work.courierPending, href: "/orders", tone: d.work.courierPending > 0 ? ("amber" as const) : ("slate" as const) },
-    { label: "কন্ডিশন পেন্ডিং", value: d.work.conditionPending, href: "/conditions", tone: d.work.conditionPending > 0 ? ("red" as const) : ("slate" as const) },
-    { label: "চলমান প্যাকেজিং", value: d.work.packagingActive, href: "/packaging", tone: "slate" as const },
+    { label: "স্লিপ করা বাকি", value: d.work.newOrders, href: "/tasks", tone: d.work.newOrders > 0 ? ("blue" as const) : ("slate" as const) },
+    { label: "পেন্ডিং রেগুলার অর্ডার", value: d.work.activeRegular, href: "/orders", tone: "slate" as const },
+    { label: "কুরিয়ারে পাঠানো বাকি", value: d.work.courierPending, href: "/orders", tone: d.work.courierPending > 0 ? ("amber" as const) : ("slate" as const) },
+    { label: "কুরিয়ার কন্ডিশন বকেয়া", value: d.work.conditionPending, href: "/dues", tone: d.work.conditionPending > 0 ? ("red" as const) : ("slate" as const) },
+    { label: "পেন্ডিং প্যাকেজিং", value: d.work.packagingActive, href: "/packaging", tone: "slate" as const },
     { label: "পুরোনো প্যাকেজিং (১০+ দিন)", value: d.work.packagingLong, href: "/packaging", tone: d.work.packagingLong > 0 ? ("red" as const) : ("slate" as const) },
     { label: "পেন্ডিং টাস্ক", value: d.work.pendingTasks, href: "/tasks", tone: d.work.pendingTasks > 0 ? ("amber" as const) : ("slate" as const) },
   ];

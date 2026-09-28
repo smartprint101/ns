@@ -64,6 +64,7 @@ export async function receiveCollection(actor: CurrentUser, input: unknown) {
         amount: data.receivedAmount,
         accountId: account.id,
         source: "COURIER_COLLECTION",
+        inCollections: true,
         date: new Date(),
         notes: `কুরিয়ার কালেকশন — ${col.title}`,
         createdById: actor.id,
@@ -155,4 +156,75 @@ export async function pendingCollectionSummary() {
     .from(courierCollections)
     .where(eq(courierCollections.status, "PENDING"));
   return { count: row?.count ?? 0, sum: row?.sum ?? 0 };
+}
+
+// ── নগদ বিক্রয় / সরাসরি কালেকশন এন্ট্রি ─────────────────────────────────────
+const cashSaleSchema = z.object({
+  title: z.string().trim().min(2, "বিবরণ লিখুন (যেমন: নগদ বিক্রয় — দোকান)"),
+  amount: z.coerce.number().positive("টাকার পরিমাণ দিন"),
+  accountId: z.string().min(1, "টাকা কোথায় জমা হলো বেছে নিন"),
+});
+
+export async function createCashSale(actor: CurrentUser, input: unknown) {
+  const data = cashSaleSchema.parse(input);
+  const db = await getDb();
+  return db.transaction(async (tx) => {
+    const [account] = await tx.select().from(accounts).where(and(eq(accounts.id, data.accountId), eq(accounts.active, true))).limit(1);
+    if (!account) throw new BizError("অ্যাকাউন্ট পাওয়া যায়নি");
+    const [payment] = await tx
+      .insert(payments)
+      .values({
+        amount: data.amount,
+        accountId: account.id,
+        source: "MANUAL",
+        inCollections: true,
+        date: new Date(),
+        notes: data.title,
+        createdById: actor.id,
+        updatedById: actor.id,
+      })
+      .returning();
+    await tx.insert(accountTransactions).values({
+      accountId: account.id,
+      amount: data.amount,
+      kind: "PAYMENT_IN",
+      paymentId: payment.id,
+      note: data.title,
+      date: payment.date,
+    });
+    await logEvent(tx, {
+      entity: "PAYMENT",
+      entityId: payment.id,
+      action: "CREATED",
+      detail: `${data.title} · ${bnMoney(data.amount)} (${account.nameBn})`,
+      actorId: actor.id,
+    });
+    await notifyAll(tx, actor.id, {
+      type: "PAYMENT_ADDED",
+      message: `${actor.name}: ${data.title} — ${bnMoney(data.amount)} (${account.nameBn})`,
+      link: "/collections?tab=done",
+    });
+    return payment;
+  });
+}
+
+/** কালেকশন হিসাব — «কালেকশনে এড হবে» করা সব টাকা-আসার এন্ট্রি একসাথে। */
+export async function listCollectionLedger() {
+  const db = await getDb();
+  return db
+    .select({
+      payment: payments,
+      accountName: accounts.nameBn,
+      partyName: schema.packagingParties.name,
+      customerName: schema.regularCustomers.name,
+      createdByName: schema.users.name,
+    })
+    .from(payments)
+    .innerJoin(accounts, eq(accounts.id, payments.accountId))
+    .leftJoin(schema.packagingParties, eq(schema.packagingParties.id, payments.partyId))
+    .leftJoin(schema.regularCustomers, eq(schema.regularCustomers.id, payments.customerId))
+    .innerJoin(schema.users, eq(schema.users.id, payments.createdById))
+    .where(eq(payments.inCollections, true))
+    .orderBy(desc(payments.date), desc(payments.createdAt))
+    .limit(300);
 }

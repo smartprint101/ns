@@ -1,16 +1,26 @@
 import { requireUser } from "@/server/auth";
+import { listActiveUsers } from "@/server/services/users";
 import { PageHead } from "@/components/page-head";
 import { Card, CardTitle, LinkButton, Badge } from "@/components/ui";
 import { ChangePasswordForm } from "@/components/forms/team-forms";
+import { IdentityChangeButton } from "@/components/forms/identity-picker";
 import { logoutAction } from "@/app/actions/auth";
 
 export const dynamic = "force-dynamic";
 
 export default async function SettingsPage() {
   const user = await requireUser();
+  const teamUsers = await listActiveUsers();
   return (
     <div className="mx-auto max-w-lg space-y-4">
       <PageHead title="সেটিংস" sub={user.name} />
+      <Card>
+        <CardTitle>👤 আপনি কে</CardTitle>
+        <p className="mb-3 text-sm leading-relaxed text-slate-700">
+          এই ডিভাইসে প্রবেশ করা আছে: <b className="text-slate-900">{user.name}</b> — অন্য কেউ এই ডিভাইস ব্যবহার করলে নাম বদলে নিন।
+        </p>
+        <IdentityChangeButton users={teamUsers} currentName={user.name} />
+      </Card>
       <Card>
         <CardTitle>
           আপনার অ্যাকাউন্ট{" "}

@@ -47,6 +47,7 @@ export function PaymentForm({
   const [accountId, setAccountId] = React.useState("");
   const [notes, setNotes] = React.useState("");
   const [isAdvance, setIsAdvance] = React.useState(false);
+  const [inCollections, setInCollections] = React.useState(false);
   const [pending, setPending] = React.useState(false);
   const [warning, setWarning] = React.useState<Warning | null>(null);
   const initialLoaded = React.useRef(false);
@@ -113,6 +114,7 @@ export function PaymentForm({
         customerId: payerKind === "customer" ? payer.id! : "",
         notes,
         isAdvance: payerKind === "party" && isAdvance,
+        inCollections,
         allocations,
       },
       confirmed
@@ -272,6 +274,16 @@ export function PaymentForm({
       <Field label="পেমেন্ট মেথড" required>
         <AccountChips accounts={accounts} value={accountId} onChange={setAccountId} />
       </Field>
+
+      <label className="flex items-center gap-2.5 text-sm font-semibold text-slate-700">
+        <input
+          type="checkbox"
+          checked={inCollections}
+          onChange={(e) => setInCollections(e.target.checked)}
+          className="h-5 w-5 rounded border-slate-300 accent-brand-700"
+        />
+        কালেকশনে এড হবে (কালেকশনের হিসাব পেজে দেখাবে)
+      </label>
 
       <Field label="নোট">
         <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} placeholder="ঐচ্ছিক…" />

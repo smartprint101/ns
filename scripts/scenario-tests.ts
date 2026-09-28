@@ -77,16 +77,16 @@ await scenario("S1: Regular order condition flow → completed", async () => {
     customerId: "",
     customerName: `S1 কাস্টমার ${RUN}`,
     phone: "01700000001",
-    productName: "ডাল ৫০ কেজি",
-    quantity: 50,
-    price: 160,
-    deliveryCharge: 0,
+    totalAmount: 8000,
+    paidAmount: 0,
+    paidAccountId: "",
+    addToCollections: false,
     hasCondition: true,
     address: "",
-    notes: "",
+    notes: "ডাল ৫০ কেজি",
   });
-  await regular.advanceRegularStage(nirob, order.id); // → READY
-  const after2 = await regular.advanceRegularStage(nirob, order.id); // courier → CONDITION_PENDING
+  await regular.advanceRegularStage(nirob, order.id); // → READY (স্লিপ)
+  const after2 = await regular.advanceRegularStage(nirob, order.id); // কুরিয়ার → CONDITION_PENDING
   assert(after2.stage === "CONDITION_PENDING", "stage CONDITION_PENDING after courier given with condition");
   const before = await balanceOf("CASH");
   await regular.receiveCondition(saiful, { orderId: order.id, receivedAmount: 8000, accountId: cash.id });
@@ -105,13 +105,13 @@ await scenario("S2: amount → closest pending conditions suggested", async () =
     const o = await regular.createRegularOrder(owner, {
       customerId: "",
       customerName: `S2 কাস্টমার ${i + 1} ${RUN}`,
-      productName: `পণ্য ${i + 1}`,
-      quantity: 1,
-      price: amounts[i],
-      deliveryCharge: 0,
+      totalAmount: amounts[i],
+      paidAmount: 0,
+      paidAccountId: "",
+      addToCollections: false,
       hasCondition: true,
       address: "",
-      notes: "",
+      notes: `পণ্য ${i + 1}`,
     });
     await regular.advanceRegularStage(owner, o.id);
     await regular.advanceRegularStage(owner, o.id);
@@ -134,42 +134,45 @@ await scenario("S2: amount → closest pending conditions suggested", async () =
 await scenario("S3+S4: cylinder → factory auto-relation", async () => {
   const factory = await masters.createFactory(owner, { name: `S3 ফ্যাক্টরি ${RUN}`, phone: "", address: "", notes: "", openingDue: 0 });
   const cyl = await masters.createCylinder(owner, { name: `S3 Cylinder ${RUN}`, factoryId: factory.id, notes: "" });
+  assert(cyl.factoryId === factory.id, "cylinder linked to factory");
   const order = await packaging.createPackagingOrder(saiful, {
     partyId: "",
     partyName: `S3 পার্টি ${RUN}`,
     workType: "CYLINDER_PACKET",
     totalKg: 100,
-    extraKg: 0,
     totalBill: 80000,
-    factoryId: factory.id, // what the UI auto-fills when cylinder is picked
-    cylinderId: cyl.id,
     advanceAmount: 0,
     advanceAccountId: "",
+    addToCollections: false,
     notes: "",
   });
+  // নতুন ফ্লো: PLACED → DESIGN → CYLINDER_SENT → CYLINDER_READY → PRODUCTION (কারখানা বাছাই এখানে)
+  await packaging.advancePackagingStage(saiful, order.id); // DESIGN
+  await packaging.advancePackagingStage(saiful, order.id); // CYLINDER_SENT
+  await packaging.advancePackagingStage(saiful, order.id); // CYLINDER_READY
+  await packaging.advancePackagingStage(saiful, order.id, { factoryId: factory.id }); // PRODUCTION + কারখানা
   const detail = await packaging.getPackagingOrder(order.id);
-  assert(detail?.order.cylinderId === cyl.id && detail.order.factoryId === factory.id, "order keeps cylinder+factory");
-  assert(detail?.order.cylinder?.factoryId === factory.id, "cylinder's factory relation intact");
+  assert(detail?.order.factoryId === factory.id, "factory set at PRODUCTION step");
+  assert(detail?.order.stage === "PRODUCTION", "stage PRODUCTION");
 });
 
 // ── Scenario 5: Packaging payment → ledger/order/balance everywhere ─────────
 await scenario("S5: packaging payment → party ledger + order due + balance", async () => {
   const party = await masters.createParty(owner, { name: `S5 পার্টি ${RUN}`, phone: "", address: "", notes: "" });
   const factory = await masters.createFactory(owner, { name: `S5 ফ্যাক্টরি ${RUN}`, phone: "", address: "", notes: "", openingDue: 0 });
+  void factory;
   const order = await packaging.createPackagingOrder(owner, {
     partyId: party.id,
     workType: "PACKET",
     totalKg: 200,
-    extraKg: 10,
-    finalKg: 210,
     totalBill: 150000,
-    factoryId: factory.id,
-    advanceAmount: 20000, // advance at creation → isAdvance payment + allocation + stage ADVANCE
+    advanceAmount: 20000, // advance at creation → isAdvance payment + allocation
     advanceAccountId: cash.id,
+    addToCollections: false,
     notes: "",
   });
   const d1 = await packaging.getPackagingOrder(order.id);
-  assert(d1?.order.stage === "ADVANCE", "stage ADVANCE after advance payment");
+  assert(d1?.order.stage === "PLACED", "stage stays PLACED (advance no longer changes stage)");
   assert(d1?.advance === 20000 && d1.paid === 20000, "advance 20000 paid recorded");
 
   const before = await balanceOf("DBBL");
@@ -200,13 +203,13 @@ await scenario("S6: multi-order allocation — one payment, three orders", async
       partyId: party.id,
       workType: "PACKET",
       totalKg: 10,
-      extraKg: 0,
       totalBill: 50000,
-      factoryId: factory.id,
       advanceAmount: 0,
       advanceAccountId: "",
+      addToCollections: false,
       notes: "",
     });
+  void factory;
   const [o1, o2, o3] = [await mk(), await mk(), await mk()];
   const before = await balanceOf("CASH");
   const r = await paymentsSvc.createPayment(owner, {
@@ -301,11 +304,10 @@ await scenario("S10: oldest pending first; completion leaves active", async () =
       partyId: party.id,
       workType: "ART_PAPER",
       totalKg: 5,
-      extraKg: 0,
       totalBill: 1000,
-      factoryId: factory.id,
       advanceAmount: 0,
       advanceAccountId: "",
+      addToCollections: false,
       notes: `S10 ${RUN}`,
     });
   const oldOrder = await mk();
@@ -322,20 +324,10 @@ await scenario("S10: oldest pending first; completion leaves active", async () =
 
   const active = await packaging.listPackagingOrders({ tab: "active", partyId: party.id });
   assert(active[0]?.order.id === oldOrder.id, "15-day-old order is first");
-  // Complete old order through the ART_PAPER flow
-  // stage is PLACED — needs advance first; give it via payment
-  await paymentsSvc.createPayment(owner, {
-    amount: 1000,
-    accountId: cash.id,
-    partyId: party.id,
-    notes: "",
-    isAdvance: true,
-    allocations: [{ packagingOrderId: oldOrder.id, amount: 1000 }],
-  });
-  // move stage: current PLACED → set ADVANCE manually via stage update? advance payment path at creation sets ADVANCE; here emulate via update
-  await db.update(schema.packagingOrders).set({ stage: "ADVANCE" }).where(eq(schema.packagingOrders.id, oldOrder.id));
-  const flow = ["PRODUCTION", "MATERIAL_RECEIVED", "DELIVERED", "COMPLETED"];
-  for (const _ of flow) await packaging.advancePackagingStage(owner, oldOrder.id);
+  // নতুন অফসেট প্রিন্টিং ফ্লো: PLACED → DESIGN → PRODUCTION (কারখানা) → DELIVERED (ফুল পেমেন্ট → হিস্ট্রি)
+  await packaging.advancePackagingStage(owner, oldOrder.id); // DESIGN
+  await packaging.advancePackagingStage(owner, oldOrder.id, { factoryId: factory.id }); // PRODUCTION
+  await packaging.advancePackagingStage(owner, oldOrder.id, { payment: { amount: 1000, accountId: cash.id } }); // DELIVERED + ফুল পেমেন্ট
   const after = await packaging.getPackagingOrder(oldOrder.id);
   assert(after?.order.status === "COMPLETED", "order completed through flow");
   const active2 = await packaging.listPackagingOrders({ tab: "active", partyId: party.id });

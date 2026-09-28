@@ -94,7 +94,7 @@ export async function globalSearch(qRaw: string): Promise<SearchResults> {
       id: r.id,
       orderNo: r.orderNo,
       label: `#${r.orderNo} — ${r.customerName}`,
-      sub: `${r.productName} · ${r.status === "CANCELLED" ? "বাতিল" : r.stage}`,
+      sub: `${r.productName ? `${r.productName} · ` : ""}${r.status === "CANCELLED" ? "বাতিল" : r.stage}`,
     })),
     packagingOrders: pos.map((r) => ({
       id: r.id,

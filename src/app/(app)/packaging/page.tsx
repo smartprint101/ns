@@ -3,7 +3,7 @@ import { listPackagingOrders, type PackagingTab } from "@/server/services/packag
 import { PageHead, Tabs, SearchBox } from "@/components/page-head";
 import { Badge, Empty, LinkButton } from "@/components/ui";
 import { AgeChip } from "@/components/age-chip";
-import { PACKAGING_STAGE_BN, STATUS_BN, WORK_TYPE_BN } from "@/lib/labels";
+import { packagingStageLabel, STATUS_BN, WORK_TYPE_BN } from "@/lib/labels";
 import { bnMoney, bn } from "@/lib/bn";
 import { fmtDateShort, daysSince } from "@/lib/dates";
 
@@ -17,15 +17,15 @@ export default async function PackagingPage({ searchParams }: { searchParams: Pr
   return (
     <div>
       <PageHead
-        title="প্যাকেজিং অর্ডার"
+        title={tab === "active" ? "পেন্ডিং প্যাকেজিং অর্ডার" : "প্যাকেজিং অর্ডার"}
         sub={tab === "active" ? "সবচেয়ে পুরোনো পেন্ডিং অর্ডার সবার উপরে" : undefined}
         right={<LinkButton href="/packaging/new">+ নতুন অর্ডার</LinkButton>}
       />
       <Tabs
         current={tab}
         tabs={[
-          { key: "active", label: "চলমান" },
-          { key: "completed", label: "সম্পন্ন" },
+          { key: "active", label: "পেন্ডিং" },
+          { key: "completed", label: "হিস্ট্রি" },
           { key: "cancelled", label: "বাতিল" },
         ]}
       />
@@ -54,8 +54,7 @@ export default async function PackagingPage({ searchParams }: { searchParams: Pr
                         PKG-{bn(order.orderNo)} · {party.name}
                       </p>
                       <p className="mt-0.5 text-[13px] text-slate-600">
-                        {WORK_TYPE_BN[order.workType]} · {bn(order.finalKg)} কেজি
-                        {order.extraKg > 0 && <span className="text-xs text-slate-400"> (মূল {bn(order.totalKg)} + অতিরিক্ত {bn(order.extraKg)})</span>}
+                        {WORK_TYPE_BN[order.workType]} · {bn(order.totalKg)} কেজি
                       </p>
                     </div>
                     {tab === "active" && <AgeChip from={order.createdAt} prefix="ধরে চলছে" />}
@@ -64,18 +63,18 @@ export default async function PackagingPage({ searchParams }: { searchParams: Pr
                     <MiniStat label="বিল" value={bnMoney(order.totalBill)} />
                     <MiniStat label="জমা" value={bnMoney(paid)} green={paid > 0} />
                     <MiniStat label="বাকি" value={bnMoney(Math.max(due, 0))} red={due > 0} />
-                    <MiniStat label="কেজি" value={`${bn(order.finalKg)}কেজি`} />
+                    <MiniStat label="কেজি" value={`${bn(order.totalKg)}কেজি`} />
                   </div>
                   <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2">
                     <div className="flex flex-wrap items-center gap-1.5">
-                      <Badge tone={order.stage === "DELIVERED" ? "green" : order.stage === "PRODUCTION" || order.stage === "PRODUCTION_DONE" ? "violet" : "blue"}>
-                        {PACKAGING_STAGE_BN[order.stage]}
+                      <Badge tone={order.stage === "DELIVERED" ? "amber" : order.stage === "PRODUCTION" || order.stage === "PRODUCTION_DONE" ? "violet" : "blue"}>
+                        {order.stage === "DELIVERED" && due > 0 && order.status === "ACTIVE" ? "বকেয়া" : packagingStageLabel(order.workType, order.stage)}
                       </Badge>
                       {order.status !== "ACTIVE" && <Badge tone={order.status === "COMPLETED" ? "green" : "red"}>{STATUS_BN[order.status]}</Badge>}
                       {longPending && <Badge tone="red">১০+ দিন পেন্ডিং</Badge>}
                     </div>
                     <p className="text-xs text-slate-500">
-                      <span className="font-semibold">{factory.name}</span>
+                      <span className="font-semibold">{factory?.name ?? "কারখানা পরে ঠিক হবে"}</span>
                       {cylinder && <span> · {cylinder.name}</span>} · {fmtDateShort(order.createdAt)}
                     </p>
                   </div>

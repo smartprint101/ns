@@ -1,7 +1,9 @@
-import { requireUser } from "@/server/auth";
+import { requireUserWithIdentity } from "@/server/auth";
 import { getDb } from "@/server/db";
 import { unreadCount } from "@/server/services/shared";
+import { listActiveUsers } from "@/server/services/users";
 import { AppShell, type NavGroup, type NavLink } from "@/components/app-shell";
+import { IdentityGate } from "@/components/forms/identity-picker";
 
 export const dynamic = "force-dynamic";
 
@@ -10,14 +12,15 @@ const groups: NavGroup[] = [
   {
     title: "অর্ডার",
     links: [
-      { href: "/orders", label: "রেগুলার অর্ডার", icon: "orders" },
+      { href: "/orders", label: "পেন্ডিং রেগুলার অর্ডার", icon: "orders" },
+      { href: "/dues", label: "কাস্টমারের বকেয়া", icon: "money" },
       { href: "/customers", label: "কাস্টমার", icon: "users" },
     ],
   },
   {
     title: "প্যাকেজিং",
     links: [
-      { href: "/packaging", label: "প্যাকেজিং অর্ডার", icon: "package" },
+      { href: "/packaging", label: "পেন্ডিং প্যাকেজিং অর্ডার", icon: "package" },
       { href: "/parties", label: "পার্টি", icon: "parties" },
       { href: "/factories", label: "ফ্যাক্টরি", icon: "factory" },
       { href: "/cylinders", label: "সিলিন্ডার", icon: "cylinder" },
@@ -27,7 +30,6 @@ const groups: NavGroup[] = [
     title: "হিসাব",
     links: [
       { href: "/collections", label: "কালেকশন", icon: "collection" },
-      { href: "/payments", label: "পেমেন্ট", icon: "money" },
       { href: "/expenses", label: "খরচ", icon: "expense" },
       { href: "/accounts", label: "ক্যাশ/ব্যাংক", icon: "accounts" },
     ],
@@ -54,8 +56,8 @@ const moreGroups: NavGroup[] = [
   {
     links: [
       { href: "/packaging", label: "প্যাকেজিং", icon: "package" },
+      { href: "/dues", label: "বকেয়া", icon: "money" },
       { href: "/collections", label: "কালেকশন", icon: "collection" },
-      { href: "/payments", label: "পেমেন্ট", icon: "money" },
       { href: "/expenses", label: "খরচ", icon: "expense" },
       { href: "/parties", label: "পার্টি", icon: "parties" },
       { href: "/customers", label: "কাস্টমার", icon: "users" },
@@ -70,12 +72,14 @@ const moreGroups: NavGroup[] = [
 ];
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  const user = await requireUser();
+  const { user, identified } = await requireUserWithIdentity();
   const db = await getDb();
   const count = await unreadCount(db, user.id);
+  const teamUsers = identified ? null : await listActiveUsers();
   return (
     <AppShell user={user} unreadCount={count} groups={groups} bottomNav={bottomNav} moreGroups={moreGroups}>
       {children}
+      {teamUsers && <IdentityGate users={teamUsers} />}
     </AppShell>
   );
 }

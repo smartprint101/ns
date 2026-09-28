@@ -57,6 +57,11 @@ export async function completeTask(actor: CurrentUser, taskId: string, completio
       })
       .where(eq(tasks.id, taskId));
     await logEvent(tx, { entity: "TASK", entityId: taskId, action: "COMPLETED", detail: completionNote?.trim() || undefined, actorId: actor.id });
+    // স্লিপ টাস্ক হলে — অর্ডারের ধাপ «স্লিপ তৈরি করা হয়েছে» করে দাও
+    if (task.regularOrderId) {
+      const { markSlipDoneFromTask } = await import("./regular-orders");
+      await markSlipDoneFromTask(tx, actor, task.regularOrderId);
+    }
     if (task.createdById !== actor.id) {
       await notifyUser(tx, task.createdById, {
         type: "TASK_COMPLETED",

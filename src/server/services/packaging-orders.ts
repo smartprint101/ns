@@ -2,7 +2,7 @@ import { z } from "zod";
 import { and, asc, desc, eq, ilike, isNull, or, sql } from "drizzle-orm";
 import { getDb, schema } from "@/server/db";
 import { BizError, logEvent, notifyAll, type CurrentUser } from "./shared";
-import { PACKAGING_STAGE_BN, WORK_TYPE_BN, nextPackagingStage } from "@/lib/labels";
+import { WORK_TYPE_BN, nextPackagingStage, packagingStageLabel } from "@/lib/labels";
 import { bnMoney, bn } from "@/lib/bn";
 import { m2 } from "@/lib/utils";
 
@@ -15,15 +15,12 @@ const createSchema = z
     partyId: z.string().optional().or(z.literal("")),
     partyName: z.string().trim().max(200).optional().or(z.literal("")),
     workType: z.enum(["CYLINDER_PACKET", "PACKET", "ART_PAPER"]),
-    totalKg: z.coerce.number().positive("মোট কেজি দিন"),
-    extraKg: z.coerce.number().min(0, "এক্সট্রা কেজি ঋণাত্মক হতে পারবে না").default(0),
-    finalKg: z.coerce.number().positive("ফাইনাল কেজি দিন").optional(),
+    totalKg: z.coerce.number().positive("কেজি দিন"),
     totalBill: z.coerce.number().positive("টোটাল বিল দিন"),
-    factoryId: z.string().min(1, "ফ্যাক্টরি বেছে নিন"),
-    cylinderId: z.string().optional().or(z.literal("")),
     advanceAmount: z.coerce.number().min(0, "অ্যাডভান্স ঋণাত্মক হতে পারবে না").default(0),
     advanceAccountId: z.string().optional().or(z.literal("")),
-    notes: z.string().trim().max(500).optional().or(z.literal("")),
+    addToCollections: z.coerce.boolean().default(false),
+    notes: z.string().trim().max(1000).optional().or(z.literal("")),
   })
   .refine((d) => d.partyId || d.partyName, { message: "পার্টি বেছে নিন বা নতুন নাম লিখুন" })
   .refine((d) => d.advanceAmount <= 0 || !!d.advanceAccountId, { message: "অ্যাডভান্সের টাকা কোন অ্যাকাউন্টে এলো বেছে নিন" })
@@ -44,17 +41,9 @@ async function findOrCreateParty(tx: Parameters<Parameters<Awaited<ReturnType<ty
 
 export async function createPackagingOrder(actor: CurrentUser, input: unknown) {
   const data = createSchema.parse(input);
-  const finalKg = data.finalKg ?? m2(data.totalKg + data.extraKg);
-  if (finalKg < data.totalKg) throw new BizError("ফাইনাল কেজি মোট কেজির কম হতে পারবে না");
   const db = await getDb();
   return db.transaction(async (tx) => {
     const partyId = data.partyId || (await findOrCreateParty(tx, data.partyName!)).id;
-    const [factory] = await tx.select().from(schema.factories).where(eq(schema.factories.id, data.factoryId)).limit(1);
-    if (!factory) throw new BizError("ফ্যাক্টরি পাওয়া যায়নি");
-    if (data.cylinderId) {
-      const [cyl] = await tx.select().from(schema.cylinders).where(eq(schema.cylinders.id, data.cylinderId)).limit(1);
-      if (!cyl) throw new BizError("সিলিন্ডার পাওয়া যায়নি");
-    }
     const withAdvance = data.advanceAmount > 0;
     const [order] = await tx
       .insert(packagingOrders)
@@ -62,13 +51,13 @@ export async function createPackagingOrder(actor: CurrentUser, input: unknown) {
         partyId,
         workType: data.workType,
         totalKg: data.totalKg,
-        extraKg: data.extraKg,
-        finalKg,
+        extraKg: 0,
+        finalKg: data.totalKg,
         totalBill: data.totalBill,
-        factoryId: data.factoryId,
-        cylinderId: data.cylinderId || null,
+        factoryId: null, // কারখানা পরে — «কারখানায় পাঠানো হয়েছে» ধাপে বাছাই হবে
+        cylinderId: null,
         notes: data.notes || null,
-        stage: withAdvance ? "ADVANCE" : "PLACED",
+        stage: "PLACED",
         status: "ACTIVE",
         createdById: actor.id,
         updatedById: actor.id,
@@ -79,7 +68,7 @@ export async function createPackagingOrder(actor: CurrentUser, input: unknown) {
       entity: "PACKAGING_ORDER",
       entityId: order.id,
       action: "CREATED",
-      detail: `${WORK_TYPE_BN[data.workType]} · ${bn(finalKg)} কেজি · বিল ${bnMoney(data.totalBill)} · ${factory.name}`,
+      detail: `${WORK_TYPE_BN[data.workType]} · ${bn(data.totalKg)} কেজি · বিল ${bnMoney(data.totalBill)}`,
       actorId: actor.id,
     });
 
@@ -98,6 +87,7 @@ export async function createPackagingOrder(actor: CurrentUser, input: unknown) {
           partyId,
           source: "MANUAL",
           isAdvance: true,
+          inCollections: data.addToCollections,
           date: new Date(),
           notes: `অ্যাডভান্স — প্যাকেজিং অর্ডার PKG-${order.orderNo}`,
           createdById: actor.id,
@@ -165,7 +155,7 @@ export async function listPackagingOrders(opts: { tab: PackagingTab; q?: string;
     })
     .from(packagingOrders)
     .innerJoin(schema.packagingParties, eq(schema.packagingParties.id, packagingOrders.partyId))
-    .innerJoin(schema.factories, eq(schema.factories.id, packagingOrders.factoryId))
+    .leftJoin(schema.factories, eq(schema.factories.id, packagingOrders.factoryId))
     .leftJoin(schema.cylinders, eq(schema.cylinders.id, packagingOrders.cylinderId))
     .where(and(...conds))
     .orderBy(...(opts.tab === "active" ? [asc(packagingOrders.createdAt)] : [desc(packagingOrders.updatedAt)]))
@@ -236,7 +226,14 @@ export async function getPackagingOrder(id: string) {
 }
 
 // ── Workflow ─────────────────────────────────────────────────────────────────
-export async function advancePackagingStage(actor: CurrentUser, orderId: string) {
+export type AdvancePackagingOpts = {
+  /** «কারখানায় পাঠানো হয়েছে» ধাপে কোন কারখানায় কাজ দিলেন। */
+  factoryId?: string;
+  /** «কুরিয়ারে পাঠানো হয়েছে» ধাপে পেমেন্ট — ফুল/আংশিক দিলে এখানে আসবে। */
+  payment?: { amount: number; accountId: string; addToCollections?: boolean };
+};
+
+export async function advancePackagingStage(actor: CurrentUser, orderId: string, opts?: AdvancePackagingOpts) {
   const db = await getDb();
   return db.transaction(async (tx) => {
     const [order] = await tx.select().from(packagingOrders).where(eq(packagingOrders.id, orderId)).limit(1).for("update");
@@ -244,31 +241,105 @@ export async function advancePackagingStage(actor: CurrentUser, orderId: string)
     if (order.status !== "ACTIVE") throw new BizError("এই অর্ডার আর চলমান নেই");
     const next = nextPackagingStage(order) as (typeof schema.packagingStageEnum.enumValues)[number] | null;
     if (!next) throw new BizError("এই অর্ডার ইতোমধ্যে সম্পন্ন");
-    if (order.stage === "PLACED" && next === "ADVANCE") {
-      throw new BizError("আগে অ্যাডভান্স নিন — «পেমেন্ট যোগ করুন» দিয়ে অ্যাডভান্স এন্ট্রি করুন");
-    }
+
     const updating: Partial<typeof packagingOrders.$inferInsert> = {
       stage: next,
       updatedById: actor.id,
     };
-    if (next === "COMPLETED") {
-      updating.status = "COMPLETED";
-      updating.completedAt = new Date();
+
+    // কারখানায় পাঠানোর সময় কারখানা বাছাই বাধ্যতামূলক
+    if (next === "PRODUCTION") {
+      const factoryId = opts?.factoryId || order.factoryId;
+      if (!factoryId) throw new BizError("কোন কারখানায় কাজ দিয়েছেন — বেছে নিন");
+      const [factory] = await tx.select().from(schema.factories).where(eq(schema.factories.id, factoryId)).limit(1);
+      if (!factory) throw new BizError("কারখানা পাওয়া যায়নি");
+      updating.factoryId = factoryId;
     }
+
+    // কুরিয়ারে পাঠানোর সময় পেমেন্ট (ঐচ্ছিক) — ফুল হলে সোজা হিস্ট্রিতে
+    let paymentInfo = "";
+    if (next === "DELIVERED" && opts?.payment && opts.payment.amount > 0) {
+      const pm = opts.payment;
+      const [account] = await tx.select().from(accounts).where(and(eq(accounts.id, pm.accountId), eq(accounts.active, true))).limit(1);
+      if (!account) throw new BizError("অ্যাকাউন্ট পাওয়া যায়নি");
+      const [payment] = await tx
+        .insert(payments)
+        .values({
+          amount: m2(pm.amount),
+          accountId: account.id,
+          partyId: order.partyId,
+          source: "MANUAL",
+          inCollections: !!pm.addToCollections,
+          date: new Date(),
+          notes: `PKG-${order.orderNo} — কুরিয়ারে পাঠানোর সময় পেমেন্ট`,
+          createdById: actor.id,
+          updatedById: actor.id,
+        })
+        .returning();
+      await tx.insert(paymentAllocations).values({ paymentId: payment.id, packagingOrderId: order.id, amount: m2(pm.amount) });
+      await tx.insert(accountTransactions).values({
+        accountId: account.id,
+        amount: m2(pm.amount),
+        kind: "PAYMENT_IN",
+        paymentId: payment.id,
+        note: `PKG-${order.orderNo} পেমেন্ট`,
+        date: payment.date,
+      });
+      paymentInfo = ` · পেমেন্ট ${bnMoney(pm.amount)} (${account.nameBn})`;
+    }
+
+    // কুরিয়ারে যাওয়ার পর বকেয়া না থাকলে অটো হিস্ট্রিতে
+    if (next === "DELIVERED" || next === "COMPLETED") {
+      const [paidRow] = await tx.select({ paid: paidSql }).from(packagingOrders).where(eq(packagingOrders.id, orderId));
+      const due = m2(order.totalBill - (paidRow?.paid ?? 0));
+      if (next === "COMPLETED" || due <= 0) {
+        updating.stage = "COMPLETED";
+        updating.status = "COMPLETED";
+        updating.completedAt = new Date();
+      }
+    }
+
     await tx.update(packagingOrders).set(updating).where(eq(packagingOrders.id, orderId));
+    const finalStage = updating.stage as string;
     await logEvent(tx, {
       entity: "PACKAGING_ORDER",
       entityId: orderId,
       action: "STAGE",
-      detail: `${PACKAGING_STAGE_BN[order.stage]} → ${PACKAGING_STAGE_BN[next]}`,
+      detail: `${packagingStageLabel(order.workType, order.stage)} → ${packagingStageLabel(order.workType, finalStage)}${paymentInfo}`,
       actorId: actor.id,
     });
     await notifyAll(tx, actor.id, {
       type: "PACKAGING_STAGE",
-      message: `${actor.name}: PKG-${order.orderNo} এখন «${PACKAGING_STAGE_BN[next]}» ধাপে`,
+      message: `${actor.name}: PKG-${order.orderNo} এখন «${packagingStageLabel(order.workType, finalStage)}» ধাপে`,
       link: `/packaging/${orderId}`,
     });
-    return { stage: next as string };
+    return { stage: finalStage };
+  });
+}
+
+/** পরে এক্সট্রা টাকা/বিল যোগ — টোটাল বিলের সাথে যোগ হবে। */
+export async function addExtraBill(actor: CurrentUser, orderId: string, amount: number, note?: string) {
+  if (!amount || amount <= 0) throw new BizError("এক্সট্রা টাকার পরিমাণ দিন");
+  const db = await getDb();
+  return db.transaction(async (tx) => {
+    const [order] = await tx.select().from(packagingOrders).where(eq(packagingOrders.id, orderId)).limit(1).for("update");
+    if (!order) throw new BizError("অর্ডার পাওয়া যায়নি");
+    if (order.status !== "ACTIVE") throw new BizError("সম্পন্ন/বাতিল অর্ডারে বিল যোগ করা যাবে না");
+    const newBill = m2(order.totalBill + amount);
+    await tx.update(packagingOrders).set({ totalBill: newBill, updatedById: actor.id }).where(eq(packagingOrders.id, orderId));
+    await logEvent(tx, {
+      entity: "PACKAGING_ORDER",
+      entityId: orderId,
+      action: "EXTRA_BILL",
+      detail: `এক্সট্রা ${bnMoney(amount)} যোগ${note ? ` — ${note}` : ""} · নতুন বিল ${bnMoney(newBill)}`,
+      actorId: actor.id,
+    });
+    await notifyAll(tx, actor.id, {
+      type: "PACKAGING_ORDER",
+      message: `${actor.name}: PKG-${order.orderNo}-এ এক্সট্রা ${bnMoney(amount)} যোগ (নতুন বিল ${bnMoney(newBill)})`,
+      link: `/packaging/${orderId}`,
+    });
+    return { totalBill: newBill };
   });
 }
 
@@ -293,18 +364,14 @@ export async function cancelPackagingOrder(actor: CurrentUser, orderId: string, 
 }
 
 const editSchema = z.object({
-  totalKg: z.coerce.number().positive("মোট কেজি দিন"),
-  extraKg: z.coerce.number().min(0).default(0),
-  finalKg: z.coerce.number().positive("ফাইনাল কেজি দিন"),
+  totalKg: z.coerce.number().positive("কেজি দিন"),
   totalBill: z.coerce.number().positive("টোটাল বিল দিন"),
-  factoryId: z.string().min(1, "ফ্যাক্টরি বেছে নিন"),
-  cylinderId: z.string().optional().or(z.literal("")),
-  notes: z.string().trim().max(500).optional().or(z.literal("")),
+  factoryId: z.string().optional().or(z.literal("")),
+  notes: z.string().trim().max(1000).optional().or(z.literal("")),
 });
 
 export async function updatePackagingOrder(actor: CurrentUser, orderId: string, input: unknown) {
   const data = editSchema.parse(input);
-  if (data.finalKg < data.totalKg) throw new BizError("ফাইনাল কেজি মোট কেজির কম হতে পারবে না");
   const db = await getDb();
   const [order] = await db.select().from(packagingOrders).where(eq(packagingOrders.id, orderId)).limit(1);
   if (!order) throw new BizError("অর্ডার পাওয়া যায়নি");
@@ -313,11 +380,9 @@ export async function updatePackagingOrder(actor: CurrentUser, orderId: string, 
     .update(packagingOrders)
     .set({
       totalKg: data.totalKg,
-      extraKg: data.extraKg,
-      finalKg: data.finalKg,
+      finalKg: data.totalKg,
       totalBill: data.totalBill,
-      factoryId: data.factoryId,
-      cylinderId: data.cylinderId || null,
+      factoryId: data.factoryId || order.factoryId || null,
       notes: data.notes || null,
       updatedById: actor.id,
     })
@@ -326,7 +391,7 @@ export async function updatePackagingOrder(actor: CurrentUser, orderId: string, 
     entity: "PACKAGING_ORDER",
     entityId: orderId,
     action: "UPDATED",
-    detail: `${bn(data.finalKg)} কেজি · বিল ${bnMoney(data.totalBill)}`,
+    detail: `${bn(data.totalKg)} কেজি · বিল ${bnMoney(data.totalBill)}`,
     actorId: actor.id,
   });
 }

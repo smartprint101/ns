@@ -24,6 +24,7 @@ const paymentSchema = z
     date: z.coerce.date().optional(),
     notes: z.string().trim().max(500).optional().or(z.literal("")),
     isAdvance: z.coerce.boolean().default(false),
+    inCollections: z.coerce.boolean().default(false),
     allocations: z.array(allocationSchema).max(30).default([]),
   })
   .refine((d) => d.partyId || d.customerId, { message: "পার্টি বা কাস্টমার বেছে নিন" });
@@ -101,6 +102,7 @@ export async function createPayment(actor: CurrentUser, rawInput: unknown, opts?
         customerId: data.customerId || null,
         source: "MANUAL",
         isAdvance: data.isAdvance,
+        inCollections: data.inCollections,
         date: data.date ?? new Date(),
         notes: data.notes || null,
         createdById: actor.id,
@@ -142,6 +144,42 @@ export async function createPayment(actor: CurrentUser, rawInput: unknown, opts?
         actorId: actor.id,
       });
     }
+    // বকেয়া শোধ হয়ে গেলে অর্ডার অটো হিস্ট্রিতে (কুরিয়ারে যাওয়া অর্ডার)
+    for (const a of allocRows) {
+      if (a.regularOrderId) {
+        const [o] = await tx.select().from(regularOrders).where(eq(regularOrders.id, a.regularOrderId)).limit(1);
+        if (o && o.status === "ACTIVE" && o.stage === "COURIER_GIVEN") {
+          const [paidRow] = await tx
+            .select({ paid: sql<number>`coalesce((select sum(pa.amount)::float8 from ${paymentAllocations} pa join ${payments} p on p.id = pa.payment_id where pa.regular_order_id = ${o.id} and p.voided_at is null), 0)` })
+            .from(regularOrders)
+            .where(eq(regularOrders.id, o.id));
+          if (m2(o.totalAmount - (paidRow?.paid ?? 0)) <= 0) {
+            await tx
+              .update(regularOrders)
+              .set({ stage: "COMPLETED", status: "COMPLETED", completedAt: new Date(), updatedById: actor.id })
+              .where(eq(regularOrders.id, o.id));
+            await logEvent(tx, { entity: "REGULAR_ORDER", entityId: o.id, action: "COMPLETED", detail: "বকেয়া শোধ — হিস্ট্রিতে গেল", actorId: actor.id });
+          }
+        }
+      }
+      if (a.packagingOrderId) {
+        const [o] = await tx.select().from(packagingOrders).where(eq(packagingOrders.id, a.packagingOrderId)).limit(1);
+        if (o && o.status === "ACTIVE" && o.stage === "DELIVERED") {
+          const [paidRow] = await tx
+            .select({ paid: sql<number>`coalesce((select sum(pa.amount)::float8 from ${paymentAllocations} pa join ${payments} p on p.id = pa.payment_id where pa.packaging_order_id = ${o.id} and p.voided_at is null), 0)` })
+            .from(packagingOrders)
+            .where(eq(packagingOrders.id, o.id));
+          if (m2(o.totalBill - (paidRow?.paid ?? 0)) <= 0) {
+            await tx
+              .update(packagingOrders)
+              .set({ stage: "COMPLETED", status: "COMPLETED", completedAt: new Date(), updatedById: actor.id })
+              .where(eq(packagingOrders.id, o.id));
+            await logEvent(tx, { entity: "PACKAGING_ORDER", entityId: o.id, action: "COMPLETED", detail: "বকেয়া শোধ — হিস্ট্রিতে গেল", actorId: actor.id });
+          }
+        }
+      }
+    }
+
     await notifyAll(tx, actor.id, {
       type: "PAYMENT_ADDED",
       message: `${actor.name}: ${payerName} থেকে ${bnMoney(data.amount)} পেমেন্ট (${account.nameBn})`,
