@@ -1,0 +1,117 @@
+import bcrypt from "bcryptjs";
+import { eq } from "drizzle-orm";
+import type { DB } from "./index";
+import {
+  accounts,
+  users,
+  factories,
+  cylinders,
+  packagingParties,
+  regularCustomers,
+} from "./schema";
+
+export const DEFAULT_ACCOUNTS = [
+  { key: "CASH", nameBn: "ক্যাশ", kind: "CASH", sortOrder: 1 },
+  { key: "DBBL", nameBn: "ডাচ্-বাংলা ব্যাংক (ডিবিবিএল)", kind: "BANK", sortOrder: 2 },
+  { key: "BRAC", nameBn: "ব্র্যাক ব্যাংক", kind: "BANK", sortOrder: 3 },
+  { key: "BKASH", nameBn: "বিকাশ", kind: "MOBILE", sortOrder: 4 },
+  { key: "NAGAD", nameBn: "নগদ", kind: "MOBILE", sortOrder: 5 },
+] as const;
+
+export async function ensureAccounts(db: DB): Promise<void> {
+  for (const a of DEFAULT_ACCOUNTS) {
+    await db
+      .insert(accounts)
+      .values({ key: a.key, nameBn: a.nameBn, kind: a.kind, sortOrder: a.sortOrder })
+      .onConflictDoNothing({ target: accounts.key });
+  }
+}
+
+export async function ensureOwnerUser(db: DB): Promise<void> {
+  const name = (process.env.SEED_ADMIN_NAME || "শরীফুল").trim();
+  const password = process.env.SEED_ADMIN_PASSWORD;
+  if (!password) {
+    console.warn("[seed] SEED_ADMIN_PASSWORD missing — owner user not created. Set it in .env and run `npm run db:seed`.");
+    return;
+  }
+  const existing = await db.select({ id: users.id }).from(users).where(eq(users.name, name)).limit(1);
+  if (existing.length > 0) return;
+  const passwordHash = await bcrypt.hash(password, 10);
+  await db.insert(users).values({ name, passwordHash, role: "OWNER", active: true });
+  console.log(`[seed] Owner user created: ${name}`);
+}
+
+/** Seed-এর ডিফল্ট স্টাফ নামগুলো (spec §3) — পাসওয়ার্ড শুধু SEED_STAFF_PASSWORD env থেকে। */
+export const DEFAULT_STAFF_NAMES = ["সাইফুল", "রহমান", "নিরব"] as const;
+
+export async function ensureStaffUsers(db: DB): Promise<void> {
+  const password = process.env.SEED_STAFF_PASSWORD;
+  if (!password) {
+    console.warn(
+      "[seed] SEED_STAFF_PASSWORD missing — staff users (সাইফুল/রহমান/নিরব) not created. Owner can add them from টিম page, or set the env and run db:seed."
+    );
+    return;
+  }
+  const passwordHash = await bcrypt.hash(password, 10);
+  for (const name of DEFAULT_STAFF_NAMES) {
+    const existing = await db.select({ id: users.id }).from(users).where(eq(users.name, name)).limit(1);
+    if (existing.length > 0) continue;
+    await db.insert(users).values({ name, passwordHash, role: "STAFF", active: true });
+    console.log(`[seed] Staff user created: ${name}`);
+  }
+}
+
+/** Runs automatically when the app boots against an empty database. */
+export async function seedIfEmpty(db: DB): Promise<void> {
+  await ensureAccounts(db);
+  const anyUser = await db.select({ id: users.id }).from(users).limit(1);
+  if (anyUser.length === 0) {
+    await ensureOwnerUser(db);
+    await ensureStaffUsers(db);
+  }
+  if (process.env.SEED_DEMO === "1") {
+    await seedDemoMasters(db);
+  }
+}
+
+/** Optional sample masters so a fresh setup isn't empty (factories/cylinders/parties). */
+export async function seedDemoMasters(db: DB): Promise<void> {
+  let f1 = await db.query.factories.findFirst({ where: eq(factories.name, "সিটি প্রিন্টিং প্রেস") });
+  if (!f1) {
+    [f1] = await db
+      .insert(factories)
+      .values({ name: "সিটি প্রিন্টিং প্রেস", phone: "01711-000001", address: "চক বাজার, ঢাকা" })
+      .returning();
+  }
+  let f2 = await db.query.factories.findFirst({ where: eq(factories.name, "মেঘনা প্যাকেজিং ইন্ডাস্ট্রিজ") });
+  if (!f2) {
+    [f2] = await db
+      .insert(factories)
+      .values({ name: "মেঘনা প্যাকেজিং ইন্ডাস্ট্রিজ", phone: "01711-000002", address: "গাজীপুর" })
+      .returning();
+  }
+  const cyls: Array<{ name: string; factoryId: string }> = [
+    { name: "ABC Chips", factoryId: f1.id },
+    { name: "Potato Crackers", factoryId: f1.id },
+    { name: "আলু চিপস ২০০গ্রাম", factoryId: f2.id },
+  ];
+  for (const c of cyls) {
+    await db.insert(cylinders).values(c).onConflictDoNothing({ target: cylinders.name });
+  }
+  const parties = [
+    { name: "ABC Packaging", phone: "01711-110011", address: "ঢাকা" },
+    { name: "Dhaka Foods", phone: "01811-220022" },
+    { name: "Rahman Trading", phone: "01911-330033" },
+  ];
+  for (const p of parties) {
+    await db.insert(packagingParties).values(p).onConflictDoNothing({ target: packagingParties.name });
+  }
+  const anyCustomer = await db.select({ id: regularCustomers.id }).from(regularCustomers).limit(1);
+  if (anyCustomer.length === 0) {
+    await db.insert(regularCustomers).values([
+      { name: "করিম উদ্দিন", phone: "01611-111111", address: "চক বাজার, ঢাকা" },
+      { name: "সালমা বেগম", phone: "01622-222222", address: "লালবাগ, ঢাকা" },
+    ]);
+  }
+  console.log("[seed] Demo masters ready (factories, cylinders, parties, customers).");
+}
