@@ -27,7 +27,7 @@ npm run dev               # http://localhost:3000
 ```
 
 - PGlite মোডে ডাটাবেস ফাইল `PGLITE_DATA_DIR` ফোল্ডারে থাকে (ডিফল্ট `./.pgdata`) — আলাদা কিছু install করতে হয় না।
-- প্রথম boot/seed-এ তৈরি হয়: **৫টি অ্যাকাউন্ট** (ক্যাশ, ডাচ-বাংলা, ব্র্যাক, বিকাশ, নগদ), **Owner** (শরীফুল), এবং `SEED_STAFF_PASSWORD` দেওয়া থাকলে **স্টাফ** (সাইফুল, রহমান, নিরব)।
+- প্রথম boot/seed-এ তৈরি হয়: **৫টি অ্যাকাউন্ট** (ক্যাশ, ডাচ-বাংলা, ব্র্যাক, বিকাশ, নগদ), **Owner** (শরীফুল), এবং আলাদা `SEED_STAFF_1_PASSWORD` / `2` / `3` দেওয়া থাকলে **স্টাফ** (সাইফুল, রহমান, নিরব)।
 - সব পাসওয়ার্ড bcrypt হ্যাশ হয়ে জমা হয় — env-তেই প্রথম পাসওয়ার্ড আসে, ডাটাবেসে কখনো plain text থাকে না।
 
 ### কাম্য `.env` (লোকাল ডেমো — এখন যেটা চলছে)
@@ -38,7 +38,12 @@ PGLITE_DATA_DIR="/home/user/.cache/ns-pgdata"
 AUTH_SECRET="...(32+ chars random)..."
 SEED_ADMIN_NAME="শরীফুল"
 SEED_ADMIN_PASSWORD="...(লাইভে শক্ত পাসওয়ার্ড)..."
-SEED_STAFF_PASSWORD="...(staff-দের প্রথম পাসওয়ার্ড)..."
+SEED_STAFF_1_NAME="সাইফুল"
+SEED_STAFF_1_PASSWORD="...(সাইফুলের আলাদা প্রথম পাসওয়ার্ড)..."
+SEED_STAFF_2_NAME="রহমান"
+SEED_STAFF_2_PASSWORD="...(রহমানের আলাদা প্রথম পাসওয়ার্ড)..."
+SEED_STAFF_3_NAME="নিরব"
+SEED_STAFF_3_PASSWORD="...(নিরবের আলাদা প্রথম পাসওয়ার্ড)..."
 SEED_DEMO="1"            # ডেমো factory/cylinder/party চাইলে 1, প্রোডাকশনে 0
 RUN_MIGRATIONS="1"       # boot-এ অটো migration (next start)
 ```
@@ -75,7 +80,12 @@ DATABASE_URL="postgresql://USER:PASSWORD@HOST/DBNAME?sslmode=require"
    AUTH_SECRET  = (openssl rand -base64 32 দিয়ে বানানো)
    SEED_ADMIN_NAME = শরীফুল
    SEED_ADMIN_PASSWORD = (শক্ত পাসওয়ার্ড — শুধু প্রথম seed-এ লাগে)
-   SEED_STAFF_PASSWORD = (স্টাফদের প্রথম পাসওয়ার্ড)
+   SEED_STAFF_1_NAME = সাইফুল
+   SEED_STAFF_1_PASSWORD = (সাইফুলের আলাদা প্রথম পাসওয়ার্ড)
+   SEED_STAFF_2_NAME = রহমান
+   SEED_STAFF_2_PASSWORD = (রহমানের আলাদা প্রথম পাসওয়ার্ড)
+   SEED_STAFF_3_NAME = নিরব
+   SEED_STAFF_3_PASSWORD = (নিরবের আলাদা প্রথম পাসওয়ার্ড)
    SEED_DEMO = 0
    RUN_MIGRATIONS = 1
    ```

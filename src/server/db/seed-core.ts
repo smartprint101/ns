@@ -41,34 +41,41 @@ export async function ensureOwnerUser(db: DB): Promise<void> {
   console.log(`[seed] Owner user created: ${name}`);
 }
 
-/** Seed-এর ডিফল্ট স্টাফ নামগুলো (spec §3) — পাসওয়ার্ড শুধু SEED_STAFF_PASSWORD env থেকে। */
+/**
+ * Seed-এর ডিফল্ট ৩ জন স্টাফ। প্রত্যেকের নাম/পাসওয়ার্ড আলাদা env-এ রাখা যায়।
+ * পুরোনো deployment-এর জন্য SEED_STAFF_PASSWORD shared fallback হিসেবেও কাজ করে।
+ */
 export const DEFAULT_STAFF_NAMES = ["সাইফুল", "রহমান", "নিরব"] as const;
 
 export async function ensureStaffUsers(db: DB): Promise<void> {
-  const password = process.env.SEED_STAFF_PASSWORD;
-  if (!password) {
-    console.warn(
-      "[seed] SEED_STAFF_PASSWORD missing — staff users (সাইফুল/রহমান/নিরব) not created. Owner can add them from টিম page, or set the env and run db:seed."
-    );
-    return;
-  }
-  const passwordHash = await bcrypt.hash(password, 10);
-  for (const name of DEFAULT_STAFF_NAMES) {
+  const sharedPassword = process.env.SEED_STAFF_PASSWORD;
+
+  for (const [index, defaultName] of DEFAULT_STAFF_NAMES.entries()) {
+    const slot = index + 1;
+    const name = (process.env[`SEED_STAFF_${slot}_NAME`] || defaultName).trim();
+    const password = process.env[`SEED_STAFF_${slot}_PASSWORD`] || sharedPassword;
+
+    if (!password) {
+      console.warn(
+        `[seed] SEED_STAFF_${slot}_PASSWORD missing — ${name} তৈরি হয়নি। Owner টিম পেজ থেকে যোগ করতে পারবেন।`
+      );
+      continue;
+    }
+
     const existing = await db.select({ id: users.id }).from(users).where(eq(users.name, name)).limit(1);
     if (existing.length > 0) continue;
+
+    const passwordHash = await bcrypt.hash(password, 10);
     await db.insert(users).values({ name, passwordHash, role: "STAFF", active: true });
     console.log(`[seed] Staff user created: ${name}`);
   }
 }
 
-/** Runs automatically when the app boots against an empty database. */
+/** Idempotently ensures the core accounts and configured login users exist. */
 export async function seedIfEmpty(db: DB): Promise<void> {
   await ensureAccounts(db);
-  const anyUser = await db.select({ id: users.id }).from(users).limit(1);
-  if (anyUser.length === 0) {
-    await ensureOwnerUser(db);
-    await ensureStaffUsers(db);
-  }
+  await ensureOwnerUser(db);
+  await ensureStaffUsers(db);
   if (process.env.SEED_DEMO === "1") {
     await seedDemoMasters(db);
   }
