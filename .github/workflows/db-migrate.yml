@@ -63,7 +63,7 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
-          cat > /tmp/verify.mjs <<'EOF'
+          cat > ./verify-tmp.mjs <<'EOF'
           import { Pool } from "pg";
           const pool = new Pool({ connectionString: process.env.DATABASE_URL, max: 1 });
           const t = await pool.query("select table_name from information_schema.tables where table_schema = 'public' order by 1");
@@ -74,4 +74,4 @@ jobs:
           console.log(`ACCOUNTS (${a.rows.length}): ${a.rows.map((r) => r.key).join(", ")}`);
           await pool.end();
           EOF
-          node /tmp/verify.mjs
+          node ./verify-tmp.mjs && rm ./verify-tmp.mjs
