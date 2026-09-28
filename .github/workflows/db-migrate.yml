@@ -12,7 +12,7 @@ name: DB Migrate
 
 on:
   push:
-    branches: ["arena/**"]
+    branches: ["main", "arena/**"]
   workflow_dispatch:
 
 permissions:
