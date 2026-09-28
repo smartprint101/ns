@@ -15,12 +15,48 @@ export default async function DashboardPage() {
   const d = await getDashboardData();
 
   const quickActions = [
-    { href: "/orders/new", label: "রেগুলার অর্ডার", icon: "orders" },
-    { href: "/packaging/new", label: "প্যাকেজিং অর্ডার", icon: "package" },
-    { href: "/payments/new", label: "পেমেন্ট", icon: "money" },
-    { href: "/expenses/new", label: "খরচ", icon: "expense" },
-    { href: "/tasks/new", label: "টাস্ক", icon: "tasks" },
-    { href: "/collections/new", label: "কালেকশন", icon: "collection" },
+    {
+      href: "/orders/new",
+      label: "রেগুলার অর্ডার",
+      icon: "orders",
+      card: "border-sky-200 bg-sky-50/80 text-sky-950 hover:border-sky-300 hover:bg-sky-100/70",
+      iconStyle: "bg-sky-600 text-white",
+    },
+    {
+      href: "/packaging/new",
+      label: "প্যাকেজিং অর্ডার",
+      icon: "package",
+      card: "border-violet-200 bg-violet-50/80 text-violet-950 hover:border-violet-300 hover:bg-violet-100/70",
+      iconStyle: "bg-violet-600 text-white",
+    },
+    {
+      href: "/payments/new",
+      label: "পেমেন্ট",
+      icon: "money",
+      card: "border-emerald-200 bg-emerald-50/80 text-emerald-950 hover:border-emerald-300 hover:bg-emerald-100/70",
+      iconStyle: "bg-emerald-600 text-white",
+    },
+    {
+      href: "/expenses/new",
+      label: "খরচ",
+      icon: "expense",
+      card: "border-rose-200 bg-rose-50/80 text-rose-950 hover:border-rose-300 hover:bg-rose-100/70",
+      iconStyle: "bg-rose-600 text-white",
+    },
+    {
+      href: "/tasks/new",
+      label: "টাস্ক",
+      icon: "tasks",
+      card: "border-amber-200 bg-amber-50/80 text-amber-950 hover:border-amber-300 hover:bg-amber-100/70",
+      iconStyle: "bg-amber-500 text-amber-950",
+    },
+    {
+      href: "/collections/new",
+      label: "কালেকশন",
+      icon: "collection",
+      card: "border-cyan-200 bg-cyan-50/80 text-cyan-950 hover:border-cyan-300 hover:bg-cyan-100/70",
+      iconStyle: "bg-cyan-600 text-white",
+    },
   ];
 
   const workStats = [
@@ -36,35 +72,50 @@ export default async function DashboardPage() {
   return (
     <div className="space-y-4">
       {/* Greeting */}
-      <div className="flex items-end justify-between gap-3 px-1">
-        <div>
-          <h1 className="text-xl font-extrabold tracking-tight text-slate-900">ড্যাশবোর্ড</h1>
-          <p className="text-sm text-slate-500">{fmtDate(new Date())} · {user.name}</p>
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-brand-950 via-brand-900 to-brand-700 px-4 py-5 text-white shadow-[0_14px_36px_rgba(6,38,30,0.18)] sm:px-5">
+        <div className="pointer-events-none absolute -right-10 -top-20 h-52 w-52 rounded-full bg-brand-300/15 blur-2xl" />
+        <div className="pointer-events-none absolute -bottom-16 right-1/3 h-32 w-32 rounded-full bg-white/5 blur-xl" />
+        <div className="relative flex items-end justify-between gap-3">
+          <div>
+            <p className="mb-1 text-xs font-bold text-brand-200">আজকের ওভারভিউ</p>
+            <h1 className="text-2xl font-extrabold leading-tight tracking-tight">ড্যাশবোর্ড</h1>
+            <p className="mt-1 text-sm font-medium text-brand-100/75">{fmtDate(new Date())} · {user.name}</p>
+          </div>
+          <Link
+            href="/search"
+            className="hidden rounded-xl border border-white/15 bg-white/10 px-3 py-2 text-sm font-bold text-white transition hover:bg-white/15 lg:block"
+          >
+            সার্চ করুন →
+          </Link>
         </div>
-        <Link href="/search" className="hidden text-sm font-semibold text-brand-700 hover:underline lg:block">
-          সার্চ করুন →
-        </Link>
       </div>
 
       {/* Quick actions */}
-      <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
-        {quickActions.map((a) => (
-          <Link
-            key={a.href}
-            href={a.href}
-            className="flex flex-col items-center justify-center gap-1.5 rounded-2xl border border-brand-600/20 bg-brand-700 px-2 py-3.5 text-center text-[13px] font-bold text-white shadow-sm transition hover:bg-brand-800 active:scale-[0.98]"
-          >
-            <span className="grid h-8 w-8 place-items-center rounded-xl bg-white/15">
-              <Icon name="plus" className="h-4 w-4" />
-            </span>
-            {a.label}
-          </Link>
-        ))}
-      </div>
+      <section>
+        <h2 className="mb-2 flex items-center gap-2 px-1 text-sm font-extrabold text-slate-800">
+          <span className="h-2 w-2 rounded-full bg-brand-500" /> দ্রুত কাজ
+        </h2>
+        <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
+          {quickActions.map((a) => (
+            <Link
+              key={a.href}
+              href={a.href}
+              className={`group flex min-h-[92px] flex-col items-center justify-center gap-2 rounded-2xl border px-2 py-3 text-center text-[13px] font-extrabold shadow-[0_2px_8px_rgba(15,23,42,0.04)] transition duration-200 hover:-translate-y-0.5 hover:shadow-md active:translate-y-0 ${a.card}`}
+            >
+              <span className={`grid h-9 w-9 place-items-center rounded-xl shadow-sm transition group-hover:scale-105 ${a.iconStyle}`}>
+                <Icon name={a.icon} className="h-[18px] w-[18px]" />
+              </span>
+              {a.label}
+            </Link>
+          ))}
+        </div>
+      </section>
 
       {/* Financial snapshot */}
       <section>
-        <h2 className="mb-2 px-1 text-sm font-bold text-slate-500">আর্থিক সারসংক্ষেপ</h2>
+        <h2 className="mb-2 flex items-center gap-2 px-1 text-sm font-extrabold text-slate-800">
+          <span className="h-2 w-2 rounded-full bg-emerald-500" /> আর্থিক সারসংক্ষেপ
+        </h2>
         <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
           <Stat
             label="আজকের কালেকশন"
@@ -101,14 +152,28 @@ export default async function DashboardPage() {
 
       {/* Active work */}
       <section>
-        <h2 className="mb-2 px-1 text-sm font-bold text-slate-500">চলমান কাজ</h2>
+        <h2 className="mb-2 flex items-center gap-2 px-1 text-sm font-extrabold text-slate-800">
+          <span className="h-2 w-2 rounded-full bg-sky-500" /> চলমান কাজ
+        </h2>
         <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-7">
           {workStats.map((s) => (
-            <Link key={s.label} href={s.href} className="rounded-2xl border border-slate-200 bg-white p-3 text-center shadow-sm transition hover:border-brand-300">
-              <p className={`text-2xl font-extrabold ${s.tone === "red" ? "text-red-600" : s.tone === "amber" ? "text-amber-600" : s.tone === "blue" ? "text-sky-600" : "text-slate-900"}`}>
+            <Link
+              key={s.label}
+              href={s.href}
+              className={`rounded-2xl border p-3 text-center shadow-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-md ${
+                s.tone === "red"
+                  ? "border-rose-200 bg-rose-50/75"
+                  : s.tone === "amber"
+                    ? "border-amber-200 bg-amber-50/75"
+                    : s.tone === "blue"
+                      ? "border-sky-200 bg-sky-50/75"
+                      : "border-slate-200 bg-white hover:border-brand-300"
+              }`}
+            >
+              <p className={`text-2xl font-extrabold ${s.tone === "red" ? "text-rose-700" : s.tone === "amber" ? "text-amber-700" : s.tone === "blue" ? "text-sky-700" : "text-slate-900"}`}>
                 {bn(s.value)}
               </p>
-              <p className="mt-0.5 text-[11px] font-semibold leading-tight text-slate-500">{s.label}</p>
+              <p className="mt-0.5 text-[11px] font-bold leading-tight text-slate-600">{s.label}</p>
             </Link>
           ))}
         </div>

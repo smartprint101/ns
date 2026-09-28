@@ -6,9 +6,10 @@ name: DB Migrate
 #
 # Required repository secrets (Settings → Secrets and variables → Actions):
 #   DATABASE_URL   — Neon/Postgres connection string
-#   OWNER_PASSWORD — password for the first owner login (username: abdurrahman)
+#   OWNER_PASSWORD — password for the first owner login (username: Shariful)
 # Optional:
-#   STAFF_PASSWORD — creates staff users সাইফুল/রহমান/নিরব
+#   STAFF_1_PASSWORD / STAFF_2_PASSWORD / STAFF_3_PASSWORD — separate first passwords
+#   STAFF_PASSWORD — backward-compatible shared fallback when separate secrets are absent
 
 on:
   push:
@@ -53,9 +54,14 @@ jobs:
         env:
           DB_DRIVER: postgres
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          SEED_ADMIN_NAME: abdurrahman
+          SEED_ADMIN_NAME: Shariful
           SEED_ADMIN_PASSWORD: ${{ secrets.OWNER_PASSWORD }}
-          SEED_STAFF_PASSWORD: ${{ secrets.STAFF_PASSWORD }}
+          SEED_STAFF_1_NAME: Saiful
+          SEED_STAFF_1_PASSWORD: ${{ secrets.STAFF_1_PASSWORD || secrets.STAFF_PASSWORD }}
+          SEED_STAFF_2_NAME: Rahman
+          SEED_STAFF_2_PASSWORD: ${{ secrets.STAFF_2_PASSWORD || secrets.STAFF_PASSWORD }}
+          SEED_STAFF_3_NAME: Nirob
+          SEED_STAFF_3_PASSWORD: ${{ secrets.STAFF_3_PASSWORD || secrets.STAFF_PASSWORD }}
           SEED_DEMO: "0"
         run: npm run db:migrate
 

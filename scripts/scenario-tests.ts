@@ -52,8 +52,8 @@ await runMigrationsAndSeed();
 const db = await getDb();
 
 // ── Actors ──────────────────────────────────────────────────────────────────
-const ownerRow = await db.query.users.findFirst({ where: eq(schema.users.name, "শরীফুল") });
-assert(ownerRow, "owner user শরীফুল seeded");
+const ownerRow = await db.query.users.findFirst({ where: eq(schema.users.name, "Shariful") });
+assert(ownerRow, "owner user Shariful seeded");
 const owner: CurrentUser = { id: ownerRow!.id, name: ownerRow!.name, role: "OWNER" };
 
 async function ensureUser(name: string): Promise<CurrentUser> {
@@ -62,8 +62,8 @@ async function ensureUser(name: string): Promise<CurrentUser> {
   const row = await usersSvc.createUser(owner, { name, password: "test1234", role: "STAFF" });
   return { id: row.id, name, role: "STAFF" };
 }
-const saiful = await ensureUser("সাইফুল");
-const nirab = await ensureUser("নিরব");
+const saiful = await ensureUser("Saiful");
+const nirob = await ensureUser("Nirob");
 
 const accounts = await listAccountsWithBalances();
 const cash = accounts.find((a) => a.key === "CASH")!;
@@ -73,7 +73,7 @@ console.log(`\nScenario tests (run ${RUN})\n`);
 
 // ── Scenario 1: Regular order → courier → condition pending → condition received ──
 await scenario("S1: Regular order condition flow → completed", async () => {
-  const order = await regular.createRegularOrder(nirab, {
+  const order = await regular.createRegularOrder(nirob, {
     customerId: "",
     customerName: `S1 কাস্টমার ${RUN}`,
     phone: "01700000001",
@@ -85,8 +85,8 @@ await scenario("S1: Regular order condition flow → completed", async () => {
     address: "",
     notes: "",
   });
-  await regular.advanceRegularStage(nirab, order.id); // → READY
-  const after2 = await regular.advanceRegularStage(nirab, order.id); // courier → CONDITION_PENDING
+  await regular.advanceRegularStage(nirob, order.id); // → READY
+  const after2 = await regular.advanceRegularStage(nirob, order.id); // courier → CONDITION_PENDING
   assert(after2.stage === "CONDITION_PENDING", "stage CONDITION_PENDING after courier given with condition");
   const before = await balanceOf("CASH");
   await regular.receiveCondition(saiful, { orderId: order.id, receivedAmount: 8000, accountId: cash.id });
@@ -173,7 +173,7 @@ await scenario("S5: packaging payment → party ledger + order due + balance", a
   assert(d1?.advance === 20000 && d1.paid === 20000, "advance 20000 paid recorded");
 
   const before = await balanceOf("DBBL");
-  const r = await paymentsSvc.createPayment(nirab, {
+  const r = await paymentsSvc.createPayment(nirob, {
     amount: 50000,
     accountId: dbbl.id,
     partyId: party.id,
@@ -238,25 +238,25 @@ await scenario("S6: multi-order allocation — one payment, three orders", async
 
 // ── Scenario 7: Task lifecycle ───────────────────────────────────────────────
 await scenario("S7: task assign → complete with info", async () => {
-  const task = await tasksSvc.createTask(owner, { title: `চক থেকে মাল নিয়ে আসো ${RUN}`, description: "জরুরি", assignedToId: nirab.id });
+  const task = await tasksSvc.createTask(owner, { title: `চক থেকে মাল নিয়ে আসো ${RUN}`, description: "জরুরি", assignedToId: nirob.id });
   const notif = await db
     .select()
     .from(schema.notifications)
-    .where(and(eq(schema.notifications.userId, nirab.id), eq(schema.notifications.type, "TASK_ASSIGNED")))
+    .where(and(eq(schema.notifications.userId, nirob.id), eq(schema.notifications.type, "TASK_ASSIGNED")))
     .orderBy(sql`${schema.notifications.createdAt} desc`)
     .limit(1);
   assert(notif.length > 0, "assignee got notification");
-  await tasksSvc.completeTask(nirab, task.id, "মাল দোকানে পৌঁছে দিয়েছি");
+  await tasksSvc.completeTask(nirob, task.id, "মাল দোকানে পৌঁছে দিয়েছি");
   const detail = await tasksSvc.getTask(task.id);
   assert(detail?.task.status === "COMPLETED", "task completed");
-  assert(detail?.task.completedById === nirab.id && detail.task.completedAt, "completion info recorded");
+  assert(detail?.task.completedById === nirob.id && detail.task.completedAt, "completion info recorded");
 });
 
 // ── Scenario 8: Task-related expense lands in account ───────────────────────
 await scenario("S8: task expense appears in account ledger", async () => {
-  const task = await tasksSvc.createTask(owner, { title: `চক থেকে ডাল আনা ${RUN}`, assignedToId: nirab.id });
+  const task = await tasksSvc.createTask(owner, { title: `চক থেকে ডাল আনা ${RUN}`, assignedToId: nirob.id });
   const before = await balanceOf("CASH");
-  const r = await expensesSvc.createExpense(nirab, {
+  const r = await expensesSvc.createExpense(nirob, {
     amount: 3400,
     category: "PURCHASE",
     description: `চক থেকে ডাল এনেছি ${RUN}`,
@@ -278,7 +278,7 @@ await scenario("S9: duplicate-looking expense → warning → confirm saves", as
   const input = {
     amount: 3400,
     category: "PURCHASE" as const,
-    description: `চক থেকে ডাল এনেছি ${RUN}`, // same text as S8, same user nirab, same amount
+    description: `চক থেকে ডাল এনেছি ${RUN}`, // same text as S8, same user nirob, same amount
     accountId: cash.id,
     partyId: "",
     factoryId: "",
@@ -286,9 +286,9 @@ await scenario("S9: duplicate-looking expense → warning → confirm saves", as
     packagingOrderId: "",
     taskId: "",
   };
-  const first = await expensesSvc.createExpense(nirab, input);
+  const first = await expensesSvc.createExpense(nirob, input);
   assert(!first.ok && "duplicateWarning" in first, "warning returned for similar entry");
-  const confirmed = await expensesSvc.createExpense(nirab, input, { confirmed: true });
+  const confirmed = await expensesSvc.createExpense(nirob, input, { confirmed: true });
   assert(confirmed.ok, "confirmed save succeeds (no hard block)");
 });
 
