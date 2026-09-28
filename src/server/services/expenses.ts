@@ -2,6 +2,7 @@ import { z } from "zod";
 import { and, desc, eq, gte, ilike, lte, or, sql } from "drizzle-orm";
 import { getDb, schema } from "@/server/db";
 import { BizError, findSimilarExpenses, logEvent, notifyAll, type DuplicateMatch, type CurrentUser } from "./shared";
+import { createBookEntryTask } from "./tasks";
 import { bnMoney } from "@/lib/bn";
 import { EXPENSE_CATEGORY_BN } from "@/lib/labels";
 import { m2 } from "@/lib/utils";
@@ -78,6 +79,14 @@ export async function createExpense(actor: CurrentUser, rawInput: unknown, opts?
       await logEvent(tx, { entity: "PACKAGING_ORDER", entityId: data.packagingOrderId, action: "EXPENSE", detail, actorId: actor.id });
     if (data.taskId) await logEvent(tx, { entity: "TASK", entityId: data.taskId, action: "EXPENSE", detail, actorId: actor.id });
     await logEvent(tx, { entity: "EXPENSE", entityId: expense.id, action: "CREATED", detail, actorId: actor.id });
+    if (!data.taskId) {
+      await createBookEntryTask(tx, actor, {
+        title: `খরচ ${bnMoney(data.amount)} — ${data.description}`,
+        description: `${EXPENSE_CATEGORY_BN[data.category]} · ${account.nameBn}`,
+        linkEntity: "EXPENSE",
+        linkEntityId: expense.id,
+      });
+    }
     await notifyAll(tx, actor.id, {
       type: "EXPENSE",
       message: `${actor.name}: খরচ ${bnMoney(data.amount)} — ${data.description}`,

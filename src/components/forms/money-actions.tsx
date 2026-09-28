@@ -8,7 +8,7 @@ import { useSubmit } from "./use-submit";
 import { voidPaymentAction, voidExpenseAction, createAdjustmentAction, createAccountAction } from "@/app/actions/money";
 import { bnMoney } from "@/lib/bn";
 
-/** Void (safe delete) a payment — balances reverse automatically. */
+/** Void (safe delete) a collection — balances reverse automatically. */
 export function VoidPaymentButton({ paymentId, amount }: { paymentId: string; amount: number }) {
   const { pending, submit } = useSubmit();
   const [open, setOpen] = React.useState(false);
@@ -18,9 +18,9 @@ export function VoidPaymentButton({ paymentId, amount }: { paymentId: string; am
       <Button variant="outlineDanger" size="sm" onClick={() => setOpen(true)} disabled={pending}>
         বাতিল করুন
       </Button>
-      <Sheet open={open} onClose={() => setOpen(false)} title="পেমেন্ট বাতিল">
+      <Sheet open={open} onClose={() => setOpen(false)} title="কালেকশন বাতিল">
         <p className="mb-3 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700 ring-1 ring-inset ring-red-200">
-          {bnMoney(amount)} পেমেন্টটি বাতিল হবে এবং অ্যাকাউন্ট ব্যালান্স/অর্ডারের জমা থেকে বাদ যাবে।
+          {bnMoney(amount)} কালেকশনটি বাতিল হবে এবং অ্যাকাউন্ট ব্যালান্স/অর্ডারের জমা থেকে বাদ যাবে।
         </p>
         <Field label="কারণ" required>
           <Textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={2} placeholder="কেন বাতিল হচ্ছে…" autoFocus />
@@ -32,7 +32,7 @@ export function VoidPaymentButton({ paymentId, amount }: { paymentId: string; am
           className="mt-4"
           disabled={pending || reason.trim().length < 2}
           onClick={() =>
-            submit(() => voidPaymentAction(paymentId, reason), { success: "পেমেন্ট বাতিল হয়েছে", onOk: () => setOpen(false) })
+            submit(() => voidPaymentAction(paymentId, reason), { success: "কালেকশন বাতিল হয়েছে", onOk: () => setOpen(false) })
           }
         >
           {pending ? <Spinner /> : null} বাতিল করুন

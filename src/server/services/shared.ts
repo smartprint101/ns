@@ -138,5 +138,5 @@ export async function findSimilarPayments(
         r.customerId === (input.customerId ?? null) &&
         (target === "" ? true : norm(r.notes ?? "") === target)
     )
-    .map((r) => ({ id: r.id, amount: r.amount, description: r.notes ?? "পেমেন্ট", date: r.date }));
+    .map((r) => ({ id: r.id, amount: r.amount, description: r.notes ?? "কালেকশন", date: r.date }));
 }

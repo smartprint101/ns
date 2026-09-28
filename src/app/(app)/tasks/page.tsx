@@ -36,7 +36,7 @@ export default async function TasksPage({ searchParams }: { searchParams: Promis
     <div className="mx-auto max-w-2xl">
       <PageHead
         title="টাস্ক"
-        sub={tab === "pending" ? "সবচেয়ে পুরোনো পেন্ডিং টাস্ক সবার উপরে" : undefined}
+        sub={tab === "pending" ? "কালেকশন/খরচ হলে খাতায় এন্ট্রির টাস্ক অটো যোগ হবে — এন্ট্রি শেষে ওকে দিন" : undefined}
         right={<LinkButton href="/tasks/new">+ নতুন টাস্ক</LinkButton>}
       />
       <Tabs current={tab} tabs={[{ key: "pending", label: "বাকি আছে" }, { key: "done", label: "সম্পন্ন" }, { key: "cancelled", label: "বাতিল" }]} />

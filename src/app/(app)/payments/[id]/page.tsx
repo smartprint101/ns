@@ -20,7 +20,7 @@ export default async function PaymentDetailPage({ params }: { params: Promise<{ 
   return (
     <div className="mx-auto max-w-2xl space-y-4">
       <PageHead
-        title={`পেমেন্ট TXN-${bn(p.txnNo)}`}
+        title={`কালেকশন TXN-${bn(p.txnNo)}`}
         sub={`${fmtDate(p.date)} · ${p.createdBy.name} এন্ট্রি করেছেন`}
         right={
           p.voidedAt ? <Badge tone="red">বাতিল</Badge> : <Badge tone="green">সচল</Badge>
@@ -31,7 +31,7 @@ export default async function PaymentDetailPage({ params }: { params: Promise<{ 
         <p className="text-3xl font-extrabold text-slate-900">{bnMoney(p.amount)}</p>
         <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
           <Info label="পার্টি/কাস্টমার" value={p.party?.name ?? p.customer?.name ?? "—"} />
-          <Info label="পেমেন্ট মেথড" value={p.account.nameBn} />
+          <Info label="টাকা কোথায় এসেছে" value={p.account.nameBn} />
           <Info label="ধরন" value={PAYMENT_SOURCE_BN[p.source]} />
           <Info label="অ্যাডভান্স" value={p.isAdvance ? "হ্যাঁ" : "না"} />
         </div>

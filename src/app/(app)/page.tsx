@@ -30,11 +30,18 @@ export default async function DashboardPage() {
       iconStyle: "bg-violet-600 text-white",
     },
     {
-      href: "/payments/new",
-      label: "পেমেন্ট",
-      icon: "money",
+      href: "/collections/new",
+      label: "কালেকশন",
+      icon: "collection",
       card: "border-emerald-200 bg-emerald-50/80 text-emerald-950 hover:border-emerald-300 hover:bg-emerald-100/70",
       iconStyle: "bg-emerald-600 text-white",
+    },
+    {
+      href: "/creditors",
+      label: "পাওনাদার",
+      icon: "money",
+      card: "border-orange-200 bg-orange-50/80 text-orange-950 hover:border-orange-300 hover:bg-orange-100/70",
+      iconStyle: "bg-orange-600 text-white",
     },
     {
       href: "/expenses/new",
@@ -49,13 +56,6 @@ export default async function DashboardPage() {
       icon: "tasks",
       card: "border-amber-200 bg-amber-50/80 text-amber-950 hover:border-amber-300 hover:bg-amber-100/70",
       iconStyle: "bg-amber-500 text-amber-950",
-    },
-    {
-      href: "/collections/new",
-      label: "কালেকশন",
-      icon: "collection",
-      card: "border-cyan-200 bg-cyan-50/80 text-cyan-950 hover:border-cyan-300 hover:bg-cyan-100/70",
-      iconStyle: "bg-cyan-600 text-white",
     },
   ];
 
@@ -122,7 +122,7 @@ export default async function DashboardPage() {
             value={bnMoney(d.money.todayCollection)}
             sub={`${bn(d.money.todayCollectionCount)}টি এন্ট্রি`}
             tone="green"
-            href="/payments"
+            href="/collections?tab=done"
           />
           <Stat
             label="আজকের খরচ"
@@ -143,6 +143,13 @@ export default async function DashboardPage() {
             sub={`${bn(d.work.collectionsPendingCount)}টি কালেকশন আনা বাকি`}
             tone={d.work.collectionsPendingCount > 0 ? "amber" : "slate"}
             href="/collections"
+          />
+          <Stat
+            label="মোট পাওনাদার"
+            value={bnMoney(d.money.creditorDue)}
+            sub={`${bn(d.money.creditorCount)}টি এন্ট্রি`}
+            tone={d.money.creditorDue > 0 ? "amber" : "slate"}
+            href="/creditors"
           />
           {d.money.accounts.map((a) => (
             <Stat key={a.id} label={a.nameBn} value={bnMoney(a.balance)} sub={a.kind === "CASH" ? "ক্যাশ" : a.kind === "BANK" ? "ব্যাংক" : "মোবাইল ব্যাংকিং"} tone={a.balance < 0 ? "red" : "slate"} href="/accounts" />

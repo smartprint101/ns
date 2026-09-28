@@ -163,7 +163,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
                 <tr className="border-b border-slate-100 text-left text-xs text-slate-400">
                   <th className="py-1.5 font-semibold">ফ্যাক্টরি</th>
                   <th className="py-1.5 text-right font-semibold">আগের বাকি</th>
-                  <th className="py-1.5 text-right font-semibold">পেমেন্ট</th>
+                  <th className="py-1.5 text-right font-semibold">কালেকশন</th>
                   <th className="py-1.5 text-right font-semibold">বাকি</th>
                 </tr>
               </thead>

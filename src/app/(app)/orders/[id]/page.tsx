@@ -92,7 +92,7 @@ export default async function RegularOrderDetailPage({ params }: { params: Promi
             )}
             <div className="flex flex-wrap gap-2">
               <LinkButton href={`/payments/new?customer=${order.customerId}`} variant="subtle" size="md">
-                ৳ পেমেন্ট
+                ৳ কালেকশন
               </LinkButton>
               <LinkButton href={`/expenses/new?regularOrderId=${order.id}`} variant="subtle" size="md">
                 খরচ যোগ
@@ -116,8 +116,8 @@ export default async function RegularOrderDetailPage({ params }: { params: Promi
 
       {/* Payment summary */}
       <Card>
-        <CardTitle right={<LinkButton href={`/payments/new?customer=${order.customerId}`} size="sm" variant="subtle">+ পেমেন্ট</LinkButton>}>
-          পেমেন্ট সারসংক্ষেপ
+        <CardTitle right={<LinkButton href={`/payments/new?customer=${order.customerId}`} size="sm" variant="subtle">+ কালেকশন</LinkButton>}>
+          কালেকশন সারসংক্ষেপ
         </CardTitle>
         <div className="grid grid-cols-3 gap-2">
           <Sum label="মোট বিল" value={bnMoney(order.totalAmount)} />

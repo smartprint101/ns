@@ -23,7 +23,6 @@ export function PackagingOrderForm({ parties, accounts }: { parties: PartyRow[];
   const [totalBill, setTotalBill] = React.useState("");
   const [advanceAmount, setAdvanceAmount] = React.useState("");
   const [advanceAccountId, setAdvanceAccountId] = React.useState("");
-  const [addToCollections, setAddToCollections] = React.useState(false);
   const [notes, setNotes] = React.useState("");
 
   const kg = Number(totalKg) || 0;
@@ -46,7 +45,6 @@ export function PackagingOrderForm({ parties, accounts }: { parties: PartyRow[];
     setTotalBill("");
     setAdvanceAmount("");
     setAdvanceAccountId("");
-    setAddToCollections(false);
     setNotes("");
   };
 
@@ -65,7 +63,7 @@ export function PackagingOrderForm({ parties, accounts }: { parties: PartyRow[];
               totalBill: bill,
               advanceAmount: advance,
               advanceAccountId,
-              addToCollections,
+              addToCollections: advance > 0,
               notes,
             }),
           {
@@ -128,18 +126,9 @@ export function PackagingOrderForm({ parties, accounts }: { parties: PartyRow[];
 
       {advance > 0 && (
         <>
-          <Field label="অ্যাডভান্সের টাকা কোথায় জমা হলো" required>
+          <Field label="অ্যাডভান্সের টাকা কোথায় এসেছে" required>
             <AccountChips accounts={accounts} value={advanceAccountId} onChange={setAdvanceAccountId} />
           </Field>
-          <label className="flex items-center gap-2.5 text-sm font-semibold text-slate-700">
-            <input
-              type="checkbox"
-              checked={addToCollections}
-              onChange={(e) => setAddToCollections(e.target.checked)}
-              className="h-5 w-5 rounded border-slate-300 accent-brand-700"
-            />
-            কালেকশনে এড হবে
-          </label>
         </>
       )}
 

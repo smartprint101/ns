@@ -47,7 +47,7 @@ export function PaymentForm({
   const [accountId, setAccountId] = React.useState("");
   const [notes, setNotes] = React.useState("");
   const [isAdvance, setIsAdvance] = React.useState(false);
-  const [inCollections, setInCollections] = React.useState(false);
+  const inCollections = true;
   const [pending, setPending] = React.useState(false);
   const [warning, setWarning] = React.useState<Warning | null>(null);
   const initialLoaded = React.useRef(false);
@@ -83,7 +83,7 @@ export function PaymentForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [payer.id, payerKind]);
 
-  // Preselect when coming from an order page ("এই অর্ডারে পেমেন্ট")
+  // Preselect when coming from an order page ("এই অর্ডারে কালেকশন")
   React.useEffect(() => {
     if (initialPartyId && orders.length > 0 && !initialLoaded.current) {
       initialLoaded.current = true;
@@ -124,7 +124,7 @@ export function PaymentForm({
       return false;
     }
     if (r.ok && "paymentId" in r) {
-      toast.success(`পেমেন্ট TXN-${r.txnNo} সেভ হয়েছে`);
+      toast.success(`কালেকশন TXN-${r.txnNo} সেভ হয়েছে`);
       await afterPaymentSaved();
       setPayer({ id: null, name: "" });
       setOrders([]);
@@ -144,7 +144,7 @@ export function PaymentForm({
 
   return (
     <div className="space-y-4">
-      {/* Party → Order → Amount → Method → Save */}
+      {/* Party → Order → Amount → Account → Save */}
       <Field label="কার কাছ থেকে টাকা" required>
         <div className="mb-2 grid grid-cols-2 gap-2">
           {(
@@ -184,12 +184,12 @@ export function PaymentForm({
         <div className="rounded-xl border border-slate-200">
           <div className="border-b border-slate-100 px-3 py-2.5 text-sm font-bold text-slate-700">
             চলমান অর্ডার {ordersLoading ? "…" : `(${bn(orders.length)})`}
-            <span className="ml-1 text-xs font-medium text-slate-400">— যেগুলোতে পেমেন্ট বসাতে চান সিলেক্ট করুন</span>
+            <span className="ml-1 text-xs font-medium text-slate-400">— যেগুলোতে কালেকশন বসাতে চান সিলেক্ট করুন</span>
           </div>
           {ordersLoading ? (
             <p className="px-3 py-4 text-sm text-slate-400">লোড হচ্ছে…</p>
           ) : orders.length === 0 ? (
-            <p className="px-3 py-4 text-sm text-slate-400">কোনো চলমান অর্ডার নেই — সাধারণ পেমেন্ট হিসেবে সেভ হবে</p>
+            <p className="px-3 py-4 text-sm text-slate-400">কোনো চলমান অর্ডার নেই — সাধারণ কালেকশন হিসেবে সেভ হবে</p>
           ) : (
             <ul className="max-h-72 overflow-y-auto">
               {orders.map((o) => {
@@ -240,7 +240,7 @@ export function PaymentForm({
       )}
 
       <div className="grid grid-cols-2 gap-3">
-        <Field label="মোট পেমেন্ট (৳)" required>
+        <Field label="মোট কালেকশন (৳)" required>
           <Input value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="যেমন 50000" inputMode="decimal" />
         </Field>
         <div className="flex items-end pb-1">
@@ -255,7 +255,7 @@ export function PaymentForm({
               )}
             </p>
           )}
-          {overAllocated && <p className="text-xs font-bold text-red-600">বণ্টন ({bnMoney(allocSum)}) পেমেন্টের ({bnMoney(amountNum)}) চেয়ে বেশি</p>}
+          {overAllocated && <p className="text-xs font-bold text-red-600">বণ্টন ({bnMoney(allocSum)}) কালেকশনের ({bnMoney(amountNum)}) চেয়ে বেশি</p>}
         </div>
       </div>
 
@@ -267,25 +267,15 @@ export function PaymentForm({
             onChange={(e) => setIsAdvance(e.target.checked)}
             className="h-5 w-5 rounded border-slate-300 accent-brand-700"
           />
-          এটি অ্যাডভান্স পেমেন্ট
+          এটি অ্যাডভান্স কালেকশন
         </label>
       )}
 
-      <Field label="পেমেন্ট মেথড" required>
+      <Field label="টাকা কোথায় এসেছে" required>
         <AccountChips accounts={accounts} value={accountId} onChange={setAccountId} />
       </Field>
 
-      <label className="flex items-center gap-2.5 text-sm font-semibold text-slate-700">
-        <input
-          type="checkbox"
-          checked={inCollections}
-          onChange={(e) => setInCollections(e.target.checked)}
-          className="h-5 w-5 rounded border-slate-300 accent-brand-700"
-        />
-        কালেকশনে এড হবে (কালেকশনের হিসাব পেজে দেখাবে)
-      </label>
-
-      <Field label="নোট">
+      <Field label="বিবরণ">
         <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} placeholder="ঐচ্ছিক…" />
       </Field>
 
@@ -300,7 +290,7 @@ export function PaymentForm({
             setPending(false);
           }}
         >
-          {pending ? <Spinner /> : null} {pending ? "সেভ হচ্ছে…" : `পেমেন্ট সেভ করুন${amountNum > 0 ? ` (${bnMoney(amountNum)})` : ""}`}
+          {pending ? <Spinner /> : null} {pending ? "সেভ হচ্ছে…" : `কালেকশন সেভ করুন${amountNum > 0 ? ` (${bnMoney(amountNum)})` : ""}`}
         </Button>
       </div>
 

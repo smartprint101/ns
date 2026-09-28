@@ -6,7 +6,7 @@ import { SwRegister } from "@/components/sw-register";
 
 export const metadata: Metadata = {
   title: { default: "এনএস ট্রেডার্স", template: "%s · এনএস ট্রেডার্স" },
-  description: "এনএস ট্রেডার্স — প্রাইভেট ব্যবসা ব্যবস্থাপনা: অর্ডার, প্যাকেজিং, পেমেন্ট, কালেকশন, খরচ, টাস্ক",
+  description: "এনএস ট্রেডার্স — প্রাইভেট ব্যবসা ব্যবস্থাপনা: অর্ডার, প্যাকেজিং, কালেকশন, খরচ, টাস্ক",
   manifest: "/manifest.webmanifest",
   appleWebApp: { capable: true, statusBarStyle: "default", title: "এনএস ট্রেডার্স" },
   applicationName: "এনএস ট্রেডার্স",

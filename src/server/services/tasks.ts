@@ -1,10 +1,46 @@
 import { z } from "zod";
-import { and, asc, desc, eq, ilike, sql } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, or, sql } from "drizzle-orm";
 import { getDb, schema } from "@/server/db";
 import { BizError, logEvent, notifyUser, type CurrentUser } from "./shared";
 import { m2 } from "@/lib/utils";
 
 const { tasks, users } = schema;
+
+type Tx = Parameters<Parameters<Awaited<ReturnType<typeof getDb>>["transaction"]>[0]>[0];
+
+/** টাকা আসা/খরচের পর খাতায় লেখা হয়েছে কিনা চেক করার অটো টাস্ক। */
+export async function createBookEntryTask(
+  tx: Tx,
+  actor: CurrentUser,
+  input: { title: string; description?: string | null; linkEntity?: string; linkEntityId?: string }
+) {
+  const [task] = await tx
+    .insert(tasks)
+    .values({
+      title: `খাতায় এন্ট্রি করুন — ${input.title}`,
+      description: input.description || null,
+      assignedToId: actor.id,
+      createdById: actor.id,
+    })
+    .returning();
+  await logEvent(tx, {
+    entity: "TASK",
+    entityId: task.id,
+    action: "CREATED",
+    detail: `অটো টাস্ক: ${input.title}`,
+    actorId: actor.id,
+  });
+  if (input.linkEntity && input.linkEntityId) {
+    await logEvent(tx, {
+      entity: input.linkEntity,
+      entityId: input.linkEntityId,
+      action: "TASK_CREATED",
+      detail: `খাতায় এন্ট্রি টাস্ক: ${task.title}`,
+      actorId: actor.id,
+    });
+  }
+  return task;
+}
 
 const taskSchema = z.object({
   title: z.string().trim().min(2, "কাজের নাম লিখুন"),
@@ -98,7 +134,7 @@ export async function listTasks(opts: { status?: string; assignedToId?: string; 
   const status = opts.status === "completed" ? "COMPLETED" : opts.status === "cancelled" ? "CANCELLED" : "PENDING";
   const conds = [eq(tasks.status, status as never)];
   if (opts.assignedToId) conds.push(eq(tasks.assignedToId, opts.assignedToId));
-  if (opts.q?.trim()) conds.push(ilike(tasks.title, `%${opts.q.trim()}%`));
+  if (opts.q?.trim()) conds.push(or(ilike(tasks.title, `%${opts.q.trim()}%`), ilike(tasks.description, `%${opts.q.trim()}%`))!);
   const rows = await db
     .select({
       task: tasks,

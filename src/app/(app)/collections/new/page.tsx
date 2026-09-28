@@ -1,15 +1,17 @@
 import { PageHead } from "@/components/page-head";
 import { Card } from "@/components/ui";
-import { CollectionForm } from "@/components/forms/collection-forms";
+import { DirectCollectionForm } from "@/components/forms/collection-forms";
+import { listAccountsWithBalances } from "@/server/services/accounts";
 
 export const dynamic = "force-dynamic";
 
-export default function NewCollectionPage() {
+export default async function NewCollectionPage() {
+  const accounts = await listAccountsWithBalances();
   return (
     <div className="mx-auto max-w-lg">
-      <PageHead title="নতুন কুরিয়ার কালেকশন" sub="কুরিয়ার থেকে কত টাকা আনার কথা আছে লিখে রাখুন" />
+      <PageHead title="নতুন কালেকশন" sub="আয়ের নাম, কত টাকা এবং টাকা কোথায় এসেছে লিখে সেভ করুন" />
       <Card className="p-4 sm:p-5">
-        <CollectionForm />
+        <DirectCollectionForm accounts={accounts} />
       </Card>
     </div>
   );

@@ -3,6 +3,7 @@ import { and, asc, desc, eq, ilike, or, sql } from "drizzle-orm";
 import { getDb, schema } from "@/server/db";
 import { BizError, logEvent, notifyAll, type CurrentUser } from "./shared";
 import { findOrCreateCustomer } from "./masters";
+import { createBookEntryTask } from "./tasks";
 import { REGULAR_STAGE_BN } from "@/lib/labels";
 import { bnMoney } from "@/lib/bn";
 import { m2 } from "@/lib/utils";
@@ -19,16 +20,16 @@ const createSchema = z
     phone: z.string().trim().max(40).optional().or(z.literal("")),
     customerAddress: z.string().trim().max(500).optional().or(z.literal("")),
     totalAmount: z.coerce.number().positive("মোট টাকার পরিমাণ দিন"),
-    paidAmount: z.coerce.number().min(0, "পেমেন্ট ঋণাত্মক হতে পারবে না").default(0),
+    paidAmount: z.coerce.number().min(0, "কালেকশন ঋণাত্মক হতে পারবে না").default(0),
     paidAccountId: z.string().optional().or(z.literal("")),
-    addToCollections: z.coerce.boolean().default(false),
+    addToCollections: z.coerce.boolean().default(true),
     hasCondition: z.coerce.boolean().default(false),
     address: z.string().trim().max(500).optional().or(z.literal("")),
     notes: z.string().trim().max(1000).optional().or(z.literal("")),
   })
   .refine((d) => d.customerId || d.customerName, { message: "কাস্টমার বেছে নিন বা নতুন নাম লিখুন" })
-  .refine((d) => d.paidAmount <= 0 || !!d.paidAccountId, { message: "পেমেন্টের টাকা কোন অ্যাকাউন্টে এলো বেছে নিন" })
-  .refine((d) => d.paidAmount <= d.totalAmount, { message: "পেমেন্ট মোট টাকার চেয়ে বেশি হতে পারবে না" });
+  .refine((d) => d.paidAmount <= 0 || !!d.paidAccountId, { message: "কালেকশনের টাকা কোন অ্যাকাউন্টে এলো বেছে নিন" })
+  .refine((d) => d.paidAmount <= d.totalAmount, { message: "কালেকশন মোট টাকার চেয়ে বেশি হতে পারবে না" });
 export type RegularOrderInput = z.infer<typeof createSchema>;
 
 export async function createRegularOrder(actor: CurrentUser, input: unknown) {
@@ -66,11 +67,11 @@ export async function createRegularOrder(actor: CurrentUser, input: unknown) {
       entity: "REGULAR_ORDER",
       entityId: order.id,
       action: "CREATED",
-      detail: `মোট ${bnMoney(totalAmount)}${data.paidAmount > 0 ? ` · পেমেন্ট ${bnMoney(data.paidAmount)}` : ""}${data.hasCondition ? " · কন্ডিশন আছে" : ""}`,
+      detail: `মোট ${bnMoney(totalAmount)}${data.paidAmount > 0 ? ` · কালেকশন ${bnMoney(data.paidAmount)}` : ""}${data.hasCondition ? " · কন্ডিশন আছে" : ""}`,
       actorId: actor.id,
     });
 
-    // এন্ট্রির সাথে পেমেন্ট (জমা) থাকলে — পেমেন্ট এন্ট্রি + অ্যাকাউন্টে টাকা
+    // এন্ট্রির সাথে কালেকশন (জমা) থাকলে — কালেকশন এন্ট্রি + অ্যাকাউন্টে টাকা
     if (data.paidAmount > 0) {
       const [account] = await tx
         .select()
@@ -86,9 +87,9 @@ export async function createRegularOrder(actor: CurrentUser, input: unknown) {
           customerId,
           source: "MANUAL",
           isAdvance: true,
-          inCollections: data.addToCollections,
+          inCollections: true,
           date: new Date(),
-          notes: `অর্ডার #${order.orderNo}-এর পেমেন্ট`,
+          notes: `অর্ডার #${order.orderNo}-এর কালেকশন`,
           createdById: actor.id,
           updatedById: actor.id,
         })
@@ -99,15 +100,21 @@ export async function createRegularOrder(actor: CurrentUser, input: unknown) {
         amount: data.paidAmount,
         kind: "PAYMENT_IN",
         paymentId: payment.id,
-        note: `অর্ডার #${order.orderNo}-এর পেমেন্ট`,
+        note: `অর্ডার #${order.orderNo}-এর কালেকশন`,
         date: payment.date,
       });
       await logEvent(tx, {
         entity: "REGULAR_ORDER",
         entityId: order.id,
         action: "PAYMENT",
-        detail: `পেমেন্ট ${bnMoney(data.paidAmount)} (${account.nameBn})`,
+        detail: `কালেকশন ${bnMoney(data.paidAmount)} (${account.nameBn})`,
         actorId: actor.id,
+      });
+      await createBookEntryTask(tx, actor, {
+        title: `কালেকশন ${bnMoney(data.paidAmount)} — অর্ডার #${order.orderNo}`,
+        description: `টাকা এসেছে: ${account.nameBn}`,
+        linkEntity: "PAYMENT",
+        linkEntityId: payment.id,
       });
     }
 
@@ -240,7 +247,7 @@ export async function advanceRegularStage(actor: CurrentUser, orderId: string) {
         next = due <= 0 ? "COMPLETED" : "COURIER_GIVEN";
       }
     } else if (order.stage === "CONDITION_PENDING") throw new BizError("কুরিয়ার কন্ডিশন বকেয়া — টাকা এলে «কন্ডিশন রিসিভ» করুন");
-    else if (order.stage === "COURIER_GIVEN") throw new BizError("বকেয়া আছে — টাকা পেলে পেমেন্ট এন্ট্রি করুন, পুরো টাকা পেলে অর্ডার নিজে হিস্ট্রিতে যাবে");
+    else if (order.stage === "COURIER_GIVEN") throw new BizError("বকেয়া আছে — টাকা পেলে কালেকশন এন্ট্রি করুন, পুরো টাকা পেলে অর্ডার নিজে হিস্ট্রিতে যাবে");
     else throw new BizError("এই অর্ডার ইতোমধ্যে সম্পন্ন");
 
     const updating: Partial<typeof regularOrders.$inferInsert> = { stage: next, updatedById: actor.id };
@@ -517,6 +524,12 @@ export async function receiveCondition(actor: CurrentUser, input: unknown) {
       action: "CREATED",
       detail: `কন্ডিশন — অর্ডার #${order.orderNo} · ${bnMoney(data.receivedAmount)} (${account.nameBn})`,
       actorId: actor.id,
+    });
+    await createBookEntryTask(tx, actor, {
+      title: `কন্ডিশন কালেকশন ${bnMoney(data.receivedAmount)} — অর্ডার #${order.orderNo}`,
+      description: `${account.nameBn}${data.notes ? ` · ${data.notes}` : ""}`,
+      linkEntity: "PAYMENT",
+      linkEntityId: payment.id,
     });
     await notifyAll(tx, actor.id, {
       type: "CONDITION_RECEIVED",

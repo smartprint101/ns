@@ -2,6 +2,7 @@ import { z } from "zod";
 import { and, asc, desc, eq, ilike, isNull, or, sql } from "drizzle-orm";
 import { getDb, schema } from "@/server/db";
 import { BizError, logEvent, notifyAll, type CurrentUser } from "./shared";
+import { createBookEntryTask } from "./tasks";
 import { WORK_TYPE_BN, nextPackagingStage, packagingStageLabel } from "@/lib/labels";
 import { bnMoney, bn } from "@/lib/bn";
 import { m2 } from "@/lib/utils";
@@ -19,7 +20,7 @@ const createSchema = z
     totalBill: z.coerce.number().positive("টোটাল বিল দিন"),
     advanceAmount: z.coerce.number().min(0, "অ্যাডভান্স ঋণাত্মক হতে পারবে না").default(0),
     advanceAccountId: z.string().optional().or(z.literal("")),
-    addToCollections: z.coerce.boolean().default(false),
+    addToCollections: z.coerce.boolean().default(true),
     notes: z.string().trim().max(1000).optional().or(z.literal("")),
   })
   .refine((d) => d.partyId || d.partyName, { message: "পার্টি বেছে নিন বা নতুন নাম লিখুন" })
@@ -87,7 +88,7 @@ export async function createPackagingOrder(actor: CurrentUser, input: unknown) {
           partyId,
           source: "MANUAL",
           isAdvance: true,
-          inCollections: data.addToCollections,
+          inCollections: true,
           date: new Date(),
           notes: `অ্যাডভান্স — প্যাকেজিং অর্ডার PKG-${order.orderNo}`,
           createdById: actor.id,
@@ -109,6 +110,12 @@ export async function createPackagingOrder(actor: CurrentUser, input: unknown) {
         action: "ADVANCE",
         detail: `অ্যাডভান্স ${bnMoney(data.advanceAmount)} (${account.nameBn})`,
         actorId: actor.id,
+      });
+      await createBookEntryTask(tx, actor, {
+        title: `অ্যাডভান্স কালেকশন ${bnMoney(data.advanceAmount)} — PKG-${order.orderNo}`,
+        description: `টাকা এসেছে: ${account.nameBn}`,
+        linkEntity: "PAYMENT",
+        linkEntityId: payment.id,
       });
     }
 
@@ -229,7 +236,7 @@ export async function getPackagingOrder(id: string) {
 export type AdvancePackagingOpts = {
   /** «কারখানায় পাঠানো হয়েছে» ধাপে কোন কারখানায় কাজ দিলেন। */
   factoryId?: string;
-  /** «কুরিয়ারে পাঠানো হয়েছে» ধাপে পেমেন্ট — ফুল/আংশিক দিলে এখানে আসবে। */
+  /** «কুরিয়ারে পাঠানো হয়েছে» ধাপে কালেকশন — ফুল/আংশিক এলে এখানে আসবে। */
   payment?: { amount: number; accountId: string; addToCollections?: boolean };
 };
 
@@ -256,7 +263,7 @@ export async function advancePackagingStage(actor: CurrentUser, orderId: string,
       updating.factoryId = factoryId;
     }
 
-    // কুরিয়ারে পাঠানোর সময় পেমেন্ট (ঐচ্ছিক) — ফুল হলে সোজা হিস্ট্রিতে
+    // কুরিয়ারে পাঠানোর সময় কালেকশন (ঐচ্ছিক) — ফুল হলে সোজা হিস্ট্রিতে
     let paymentInfo = "";
     if (next === "DELIVERED" && opts?.payment && opts.payment.amount > 0) {
       const pm = opts.payment;
@@ -269,9 +276,9 @@ export async function advancePackagingStage(actor: CurrentUser, orderId: string,
           accountId: account.id,
           partyId: order.partyId,
           source: "MANUAL",
-          inCollections: !!pm.addToCollections,
+          inCollections: true,
           date: new Date(),
-          notes: `PKG-${order.orderNo} — কুরিয়ারে পাঠানোর সময় পেমেন্ট`,
+          notes: `PKG-${order.orderNo} — কুরিয়ারে পাঠানোর সময় কালেকশন`,
           createdById: actor.id,
           updatedById: actor.id,
         })
@@ -282,10 +289,16 @@ export async function advancePackagingStage(actor: CurrentUser, orderId: string,
         amount: m2(pm.amount),
         kind: "PAYMENT_IN",
         paymentId: payment.id,
-        note: `PKG-${order.orderNo} পেমেন্ট`,
+        note: `PKG-${order.orderNo} কালেকশন`,
         date: payment.date,
       });
-      paymentInfo = ` · পেমেন্ট ${bnMoney(pm.amount)} (${account.nameBn})`;
+      await createBookEntryTask(tx, actor, {
+        title: `কালেকশন ${bnMoney(pm.amount)} — PKG-${order.orderNo}`,
+        description: `টাকা এসেছে: ${account.nameBn}`,
+        linkEntity: "PAYMENT",
+        linkEntityId: payment.id,
+      });
+      paymentInfo = ` · কালেকশন ${bnMoney(pm.amount)} (${account.nameBn})`;
     }
 
     // কুরিয়ারে যাওয়ার পর বকেয়া না থাকলে অটো হিস্ট্রিতে

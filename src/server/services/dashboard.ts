@@ -4,7 +4,7 @@ import { listAccountsWithBalances } from "./accounts";
 import { startOfToday, endOfToday } from "@/lib/dates";
 import { m2 } from "@/lib/utils";
 
-const { regularOrders, packagingOrders, payments, expenses, tasks, courierCollections } = schema;
+const { regularOrders, packagingOrders, payments, expenses, tasks, courierCollections, creditors } = schema;
 
 export async function getDashboardData() {
   const db = await getDb();
@@ -12,7 +12,7 @@ export async function getDashboardData() {
   const to = endOfToday();
   const tenDaysAgo = new Date(Date.now() - 10 * 24 * 3600 * 1000);
 
-  const [regularByStage, todayCollection, todayExpense, expenseByCategory, pendingTasks, collectionsPending, packagingActive, packagingLong, accountsWithBalances] =
+  const [regularByStage, todayCollection, todayExpense, expenseByCategory, pendingTasks, collectionsPending, creditorTotals, packagingActive, packagingLong, accountsWithBalances] =
     await Promise.all([
       db
         .select({ stage: regularOrders.stage, count: sql<number>`count(*)::int` })
@@ -37,6 +37,10 @@ export async function getDashboardData() {
         .select({ count: sql<number>`count(*)::int`, sum: sql<number>`coalesce(sum(${courierCollections.expectedAmount})::float8,0)` })
         .from(courierCollections)
         .where(eq(courierCollections.status, "PENDING")),
+      db
+        .select({ count: sql<number>`count(*)::int`, sum: sql<number>`coalesce(sum(${creditors.amount})::float8,0)` })
+        .from(creditors)
+        .where(eq(creditors.status, "ACTIVE")),
       db.select({ count: sql<number>`count(*)::int` }).from(packagingOrders).where(eq(packagingOrders.status, "ACTIVE")),
       db
         .select({ count: sql<number>`count(*)::int` })
@@ -126,6 +130,8 @@ export async function getDashboardData() {
       todayCollectionCount: todayCollection[0]?.count ?? 0,
       todayExpense: m2(todayExpense[0]?.sum ?? 0),
       todayExpenseCount: todayExpense[0]?.count ?? 0,
+      creditorDue: m2(creditorTotals[0]?.sum ?? 0),
+      creditorCount: creditorTotals[0]?.count ?? 0,
       expenseByCategory: Object.fromEntries(expenseByCategory.map((e) => [e.category, m2(e.sum)])),
       accounts: accountsWithBalances,
     },

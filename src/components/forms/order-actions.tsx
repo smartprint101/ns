@@ -73,7 +73,7 @@ export function AdvanceStageButton({ kind, id, label, disabled }: { kind: "regul
 /**
  * প্যাকেজিং ধাপ এগোনোর স্মার্ট বাটন:
  * - «কারখানায় পাঠানো» ধাপে গেলে → কোন কারখানায় দিলেন সেটা বাছাই করার পপআপ
- * - «কুরিয়ারে পাঠানো» ধাপে গেলে → «পেমেন্ট কি ফুল দিয়েছে?» পপআপ
+ * - «কুরিয়ারে পাঠানো» ধাপে গেলে → «কালেকশন কি ফুল এসেছে?» পপআপ
  */
 export function PackagingAdvanceButton({
   orderId,
@@ -99,7 +99,6 @@ export function PackagingAdvanceButton({
   const [payMode, setPayMode] = React.useState<"full" | "partial" | "none">("full");
   const [payAmount, setPayAmount] = React.useState("");
   const [accountId, setAccountId] = React.useState("");
-  const [addToCollections, setAddToCollections] = React.useState(false);
 
   const amountNum = payMode === "full" ? due : Number(payAmount) || 0;
 
@@ -144,16 +143,16 @@ export function PackagingAdvanceButton({
         </Button>
       </Sheet>
 
-      {/* কুরিয়ারের সময় পেমেন্ট পপআপ */}
-      <Sheet open={payOpen} onClose={() => setPayOpen(false)} title="পেমেন্ট কি ফুল দিয়েছে?">
+      {/* কুরিয়ারের সময় কালেকশন পপআপ */}
+      <Sheet open={payOpen} onClose={() => setPayOpen(false)} title="কালেকশন কি ফুল এসেছে?">
         <p className="mb-3 rounded-xl bg-slate-50 px-3 py-2 text-sm text-slate-600 ring-1 ring-inset ring-slate-200">
-          বকেয়া আছে <b className="text-red-600">{bnMoney(due)}</b> — কুরিয়ারে পাঠানোর সময় কত দিলো?
+          বকেয়া আছে <b className="text-red-600">{bnMoney(due)}</b> — কুরিয়ারে পাঠানোর সময় কত টাকা এলো?
         </p>
         <div className="mb-3 grid grid-cols-3 gap-2">
           {(
             [
-              { key: "full", label: "ফুল দিয়েছে" },
-              { key: "partial", label: "কিছু দিয়েছে" },
+              { key: "full", label: "ফুল এসেছে" },
+              { key: "partial", label: "কিছু এসেছে" },
               { key: "none", label: "পরে দেবে" },
             ] as const
           ).map((o) => (
@@ -175,21 +174,12 @@ export function PackagingAdvanceButton({
         </div>
         {payMode !== "none" && (
           <div className="space-y-4">
-            <Field label="কত টাকা দিলো (৳)" required>
+            <Field label="কত টাকা এলো (৳)" required>
               <Input value={payMode === "full" ? String(due) : payAmount} onChange={(e) => setPayAmount(e.target.value)} inputMode="decimal" disabled={payMode === "full"} />
             </Field>
-            <Field label="টাকা কোথায় জমা হলো" required>
+            <Field label="টাকা কোথায় এসেছে" required>
               <AccountChips accounts={accounts} value={accountId} onChange={setAccountId} />
             </Field>
-            <label className="flex items-center gap-2.5 text-sm font-semibold text-slate-700">
-              <input
-                type="checkbox"
-                checked={addToCollections}
-                onChange={(e) => setAddToCollections(e.target.checked)}
-                className="h-5 w-5 rounded border-slate-300 accent-brand-700"
-              />
-              কালেকশনে এড হবে
-            </label>
           </div>
         )}
         <Button
@@ -201,7 +191,7 @@ export function PackagingAdvanceButton({
             go(
               payMode === "none"
                 ? undefined
-                : { payment: { amount: amountNum, accountId, addToCollections } }
+                : { payment: { amount: amountNum, accountId, addToCollections: true } }
             )
           }
         >
@@ -209,8 +199,8 @@ export function PackagingAdvanceButton({
           {payMode === "none"
             ? "কুরিয়ারে পাঠানো হয়েছে — বকেয়া থাকলো"
             : amountNum >= due
-              ? `কুরিয়ারে পাঠানো + ফুল পেমেন্ট (${bnMoney(amountNum)}) — হিস্ট্রিতে যাবে`
-              : `কুরিয়ারে পাঠানো + পেমেন্ট ${bnMoney(amountNum)}`}
+              ? `কুরিয়ারে পাঠানো + ফুল কালেকশন (${bnMoney(amountNum)}) — হিস্ট্রিতে যাবে`
+              : `কুরিয়ারে পাঠানো + কালেকশন ${bnMoney(amountNum)}`}
         </Button>
       </Sheet>
     </>
