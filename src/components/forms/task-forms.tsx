@@ -6,7 +6,6 @@ import { Sheet, ConfirmSheet } from "@/components/sheet";
 import { useSubmit } from "./use-submit";
 import { createTaskAction, completeTaskAction, cancelTaskAction } from "@/app/actions/tasks";
 import { ExpenseForm, type OrderLinkOption } from "./expense-form";
-import { toast } from "sonner";
 
 type UserOpt = { id: string; name: string };
 type AccountRow = { id: string; key: string; nameBn: string; kind: string; balance: number };
@@ -84,7 +83,7 @@ export function TaskActions({
   return (
     <div className="flex flex-wrap gap-2">
       <Button size="sm" onClick={() => setDoneOpen(true)} disabled={pending}>
-        ✓ সম্পন্ন
+        ✓ ওকে
       </Button>
       <Button size="sm" variant="subtle" onClick={() => setExpenseOpen(true)} disabled={pending}>
         ৳ খরচ যোগ
@@ -93,9 +92,9 @@ export function TaskActions({
         বাতিল
       </Button>
 
-      <Sheet open={doneOpen} onClose={() => setDoneOpen(false)} title="টাস্ক সম্পন্ন">
-        <Field label="কীভাবে/কী হয়েছে — সংক্ষেপে (ঐচ্ছিক)">
-          <Textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} placeholder="যেমন: মাল দোকানে পৌঁছে দিয়েছি" />
+      <Sheet open={doneOpen} onClose={() => setDoneOpen(false)} title="খাতায় এন্ট্রি হয়েছে?">
+        <Field label="বিবরণ / নোট (ঐচ্ছিক)">
+          <Textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} placeholder="যেমন: খাতায় লিখে মিলিয়ে নিয়েছি" />
         </Field>
         <Button
           full
@@ -112,7 +111,7 @@ export function TaskActions({
             })
           }
         >
-          {pending ? <Spinner /> : null} সম্পন্ন করুন
+          {pending ? <Spinner /> : null} ওকে — টাস্ক শেষ
         </Button>
       </Sheet>
 

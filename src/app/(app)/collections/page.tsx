@@ -4,7 +4,7 @@ import { listAccountsWithBalances } from "@/server/services/accounts";
 import { PageHead, Tabs } from "@/components/page-head";
 import { Badge, Card, Empty, LinkButton } from "@/components/ui";
 import { AgeChip } from "@/components/age-chip";
-import { CollectionActions, CashSaleButton } from "@/components/forms/collection-forms";
+import { CollectionActions } from "@/components/forms/collection-forms";
 import { COLLECTION_STATUS_BN, collectionKindLabel } from "@/lib/labels";
 import { bnMoney, bn } from "@/lib/bn";
 import { fmtDateShort } from "@/lib/dates";
@@ -16,12 +16,12 @@ const kindTone: Record<string, "blue" | "amber" | "violet" | "green" | "teal" | 
   "কুরিয়ার কন্ডিশন": "violet",
   "পার্টি কালেকশন": "teal",
   "কাস্টমার কালেকশন": "amber",
-  "নগদ বিক্রয়": "green",
+  "সাধারণ কালেকশন": "green",
 };
 
 export default async function CollectionsPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
   const sp = await searchParams;
-  const tab = sp.tab === "done" ? "done" : "pending";
+  const tab = sp.tab === "pending" ? "pending" : "done";
   const [rows, accounts, ledger] = await Promise.all([
     tab === "pending" ? listCollections({ tab: "pending" }) : Promise.resolve([]),
     listAccountsWithBalances(),
@@ -32,21 +32,14 @@ export default async function CollectionsPage({ searchParams }: { searchParams: 
     <div className="mx-auto max-w-2xl">
       <PageHead
         title="কালেকশন"
-        sub={tab === "pending" ? "কুরিয়ার থেকে টাকা আনা বাকি — পুরোনো আগে" : "কার থেকে কী কালেকশন — সব হিসাব"}
-        right={
-          <div className="flex gap-1.5">
-            <CashSaleButton accounts={accounts} />
-            <LinkButton href="/collections/new">+ কালেকশন</LinkButton>
-          </div>
-        }
+        sub={tab === "pending" ? "যে কালেকশনগুলো এখনও আনা বাকি" : "যে টাকা এসেছে — আয়ের নাম, পরিমাণ ও জমার মাধ্যমসহ"}
+        right={<LinkButton href="/collections/new">+ কালেকশন</LinkButton>}
       />
-      <Tabs current={tab} tabs={[{ key: "pending", label: "আনা বাকি" }, { key: "done", label: "হিসাব" }]} />
+      <Tabs current={tab} tabs={[{ key: "done", label: "হিসাব" }, { key: "pending", label: "আনা বাকি" }]} />
 
       {tab === "pending" ? (
         rows.length === 0 ? (
-          <Empty text="কোনো কালেকশন বাকি নেই">
-            <LinkButton href="/collections/new" size="sm" variant="subtle">+ নতুন কালেকশন</LinkButton>
-          </Empty>
+          <Empty text="কোনো কালেকশন বাকি নেই" />
         ) : (
           <ul className="space-y-2">
             {rows.map(({ collection: c, createdByName }) => (
@@ -81,7 +74,7 @@ export default async function CollectionsPage({ searchParams }: { searchParams: 
         )
       ) : ledger.length === 0 ? (
         <Empty text="এখনও কোনো কালেকশন হিসাব নেই">
-          <p className="text-xs text-slate-400">পেমেন্ট এন্ট্রির সময় «কালেকশনে এড হবে» টগল অন করলে এখানে আসবে</p>
+          <LinkButton href="/collections/new" size="sm" variant="subtle">+ নতুন কালেকশন</LinkButton>
         </Empty>
       ) : (
         <>
@@ -116,7 +109,7 @@ export default async function CollectionsPage({ searchParams }: { searchParams: 
             })}
           </ul>
           <p className="mt-3 text-center text-xs text-slate-400">
-            {bn(ledger.length)}টি এন্ট্রি · <Link href="/payments" className="font-semibold text-brand-700 hover:underline">সব পেমেন্ট দেখুন →</Link>
+            {bn(ledger.length)}টি কালেকশন এন্ট্রি
           </p>
         </>
       )}

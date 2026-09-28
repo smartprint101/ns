@@ -10,7 +10,7 @@ export default async function NewOrderPage() {
   const [customers, accounts] = await Promise.all([listCustomers(), listAccountsWithBalances()]);
   return (
     <div className="mx-auto max-w-lg">
-      <PageHead title="নতুন রেগুলার অর্ডার" sub="কাস্টমার → মোট টাকা → পেমেন্ট → সেভ" />
+      <PageHead title="নতুন রেগুলার অর্ডার" sub="কাস্টমার → মোট টাকা → কালেকশন → সেভ" />
       <Card className="p-4 sm:p-5">
         <RegularOrderForm customers={customers} accounts={accounts} />
       </Card>

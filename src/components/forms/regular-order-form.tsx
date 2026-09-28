@@ -22,7 +22,6 @@ export function RegularOrderForm({ customers, accounts }: { customers: CustomerR
   const [totalAmount, setTotalAmount] = React.useState("");
   const [paidAmount, setPaidAmount] = React.useState("");
   const [paidAccountId, setPaidAccountId] = React.useState("");
-  const [addToCollections, setAddToCollections] = React.useState(false);
   const [hasCondition, setHasCondition] = React.useState(false);
   const [notes, setNotes] = React.useState("");
 
@@ -37,7 +36,6 @@ export function RegularOrderForm({ customers, accounts }: { customers: CustomerR
     setTotalAmount("");
     setPaidAmount("");
     setPaidAccountId("");
-    setAddToCollections(false);
     setHasCondition(false);
     setNotes("");
   };
@@ -64,7 +62,7 @@ export function RegularOrderForm({ customers, accounts }: { customers: CustomerR
               totalAmount: total,
               paidAmount: paid,
               paidAccountId,
-              addToCollections,
+              addToCollections: paid > 0,
               hasCondition,
               address: customerAddress,
               notes,
@@ -113,7 +111,7 @@ export function RegularOrderForm({ customers, accounts }: { customers: CustomerR
         <Field label="মোট টাকা (৳)" required>
           <Input value={totalAmount} onChange={(e) => setTotalAmount(e.target.value)} placeholder="০" inputMode="decimal" />
         </Field>
-        <Field label="পেমেন্ট কত দিয়েছে (৳)">
+        <Field label="কালেকশন কত এসেছে (৳)">
           <Input value={paidAmount} onChange={(e) => setPaidAmount(e.target.value)} placeholder="০" inputMode="decimal" />
         </Field>
       </div>
@@ -127,18 +125,9 @@ export function RegularOrderForm({ customers, accounts }: { customers: CustomerR
 
       {paid > 0 && (
         <>
-          <Field label="পেমেন্টের টাকা কোথায় জমা হলো" required>
+          <Field label="টাকা কোথায় এসেছে" required>
             <AccountChips accounts={accounts} value={paidAccountId} onChange={setPaidAccountId} />
           </Field>
-          <label className="flex items-center gap-2.5 text-sm font-semibold text-slate-700">
-            <input
-              type="checkbox"
-              checked={addToCollections}
-              onChange={(e) => setAddToCollections(e.target.checked)}
-              className="h-5 w-5 rounded border-slate-300 accent-brand-700"
-            />
-            কালেকশনে এড হবে
-          </label>
         </>
       )}
 

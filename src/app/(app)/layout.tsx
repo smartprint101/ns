@@ -30,6 +30,7 @@ const groups: NavGroup[] = [
     title: "হিসাব",
     links: [
       { href: "/collections", label: "কালেকশন", icon: "collection" },
+      { href: "/creditors", label: "পাওনাদার", icon: "money" },
       { href: "/expenses", label: "খরচ", icon: "expense" },
       { href: "/accounts", label: "ক্যাশ/ব্যাংক", icon: "accounts" },
     ],
@@ -58,6 +59,7 @@ const moreGroups: NavGroup[] = [
       { href: "/packaging", label: "প্যাকেজিং", icon: "package" },
       { href: "/dues", label: "বকেয়া", icon: "money" },
       { href: "/collections", label: "কালেকশন", icon: "collection" },
+      { href: "/creditors", label: "পাওনাদার", icon: "money" },
       { href: "/expenses", label: "খরচ", icon: "expense" },
       { href: "/parties", label: "পার্টি", icon: "parties" },
       { href: "/customers", label: "কাস্টমার", icon: "users" },

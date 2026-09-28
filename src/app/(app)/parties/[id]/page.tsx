@@ -24,7 +24,7 @@ export default async function PartyLedgerPage({ params }: { params: Promise<{ id
         sub={`${party.phone ?? "ফোন নেই"}${party.address ? ` · ${party.address}` : ""}`}
         right={
           <div className="flex gap-2">
-            <LinkButton href={`/payments/new?party=${party.id}`} size="md">৳ পেমেন্ট</LinkButton>
+            <LinkButton href={`/payments/new?party=${party.id}`} size="md">৳ কালেকশন</LinkButton>
             <LinkButton href="/packaging/new" size="md" variant="secondary">+ অর্ডার</LinkButton>
           </div>
         }
@@ -72,11 +72,11 @@ export default async function PartyLedgerPage({ params }: { params: Promise<{ id
       </Card>
 
       <Card>
-        <CardTitle right={<LinkButton href={`/payments/new?party=${party.id}`} size="sm" variant="subtle">+ পেমেন্ট</LinkButton>}>
-          পেমেন্ট হিস্টোরি
+        <CardTitle right={<LinkButton href={`/payments/new?party=${party.id}`} size="sm" variant="subtle">+ কালেকশন</LinkButton>}>
+          কালেকশন হিস্টোরি
         </CardTitle>
         {payments.length === 0 ? (
-          <Empty text="কোনো পেমেন্ট নেই" />
+          <Empty text="কোনো কালেকশন নেই" />
         ) : (
           <ul className="divide-y divide-slate-100">
             {payments.map((p) => (

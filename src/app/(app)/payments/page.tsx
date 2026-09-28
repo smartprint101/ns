@@ -16,7 +16,7 @@ export default async function PaymentsPage({ searchParams }: { searchParams: Pro
 
   return (
     <div>
-      <PageHead title="পেমেন্ট" sub="সব টাকা-আসার এন্ট্রি (পেমেন্ট, কন্ডিশন, কুরিয়ার কালেকশন)" right={<LinkButton href="/payments/new">+ নতুন পেমেন্ট</LinkButton>} />
+      <PageHead title="কালেকশন" sub="সব টাকা-আসার এন্ট্রি" right={<LinkButton href="/collections/new">+ নতুন কালেকশন</LinkButton>} />
 
       <div className="mb-3 flex gap-1.5 overflow-x-auto no-scrollbar">
         <FilterChip href="/payments" active={!sp.account} label="সব মেথড" />
@@ -27,8 +27,8 @@ export default async function PaymentsPage({ searchParams }: { searchParams: Pro
       <SearchBox placeholder="TXN নম্বর / পার্টি / কাস্টমার / নোট…" defaultValue={sp.q} hidden={sp.account ? { account: sp.account } : undefined} />
 
       {rows.length === 0 ? (
-        <Empty text="কোনো পেমেন্ট পাওয়া যায়নি">
-          <LinkButton href="/payments/new" size="sm" variant="subtle">+ নতুন পেমেন্ট</LinkButton>
+        <Empty text="কোনো কালেকশন পাওয়া যায়নি">
+          <LinkButton href="/collections/new" size="sm" variant="subtle">+ নতুন কালেকশন</LinkButton>
         </Empty>
       ) : (
         <ul className="space-y-2">

@@ -91,7 +91,7 @@ export default async function PackagingOrderDetailPage({ params }: { params: Pro
           <div className="space-y-2.5">
             {order.stage === "DELIVERED" && due > 0 && (
               <p className="rounded-xl bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-700 ring-1 ring-inset ring-amber-200">
-                কুরিয়ারে পাঠানো হয়েছে — বকেয়া {bnMoney(due)}। টাকা পেলে «৳ পেমেন্ট যোগ» করুন, পুরো টাকা পেলে অর্ডার নিজেই হিস্ট্রিতে যাবে।
+                কুরিয়ারে পাঠানো হয়েছে — বকেয়া {bnMoney(due)}। টাকা পেলে «৳ কালেকশন যোগ» করুন, পুরো টাকা পেলে অর্ডার নিজেই হিস্ট্রিতে যাবে।
               </p>
             )}
             {next && nextLabel && (
@@ -107,7 +107,7 @@ export default async function PackagingOrderDetailPage({ params }: { params: Pro
             )}
             <div className="flex flex-wrap gap-2">
               <LinkButton href={`/payments/new?party=${order.partyId}`} variant="subtle" size="md">
-                ৳ পেমেন্ট যোগ
+                ৳ কালেকশন যোগ
               </LinkButton>
               <LinkButton href={`/expenses/new?packagingOrderId=${order.id}`} variant="subtle" size="md">
                 খরচ যোগ
@@ -131,8 +131,8 @@ export default async function PackagingOrderDetailPage({ params }: { params: Pro
 
       {/* Payment summary: bill / advance / paid / due */}
       <Card>
-        <CardTitle right={<LinkButton href={`/payments/new?party=${order.partyId}`} size="sm" variant="subtle">+ পেমেন্ট</LinkButton>}>
-          পেমেন্ট সারসংক্ষেপ
+        <CardTitle right={<LinkButton href={`/payments/new?party=${order.partyId}`} size="sm" variant="subtle">+ কালেকশন</LinkButton>}>
+          কালেকশন সারসংক্ষেপ
         </CardTitle>
         <div className="grid grid-cols-4 gap-1.5 sm:grid-cols-4">
           <Sum label="টোটাল বিল" value={bnMoney(order.totalBill)} />
@@ -162,7 +162,7 @@ export default async function PackagingOrderDetailPage({ params }: { params: Pro
             ))}
           </ul>
         ) : (
-          <p className="mt-3 text-sm text-slate-400">এখনও কোনো পেমেন্ট নেই</p>
+          <p className="mt-3 text-sm text-slate-400">এখনও কোনো কালেকশন নেই</p>
         )}
       </Card>
 

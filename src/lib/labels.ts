@@ -75,7 +75,7 @@ export const COLLECTION_STATUS_BN: Record<string, string> = {
 };
 
 export const PAYMENT_SOURCE_BN: Record<string, string> = {
-  MANUAL: "সাধারণ পেমেন্ট",
+  MANUAL: "সাধারণ কালেকশন",
   CONDITION: "কুরিয়ার কন্ডিশন",
   COURIER_COLLECTION: "কুরিয়ার কালেকশন",
 };
@@ -86,7 +86,7 @@ export function collectionKindLabel(p: { source: string; partyId?: string | null
   if (p.source === "CONDITION") return "কুরিয়ার কন্ডিশন";
   if (p.partyId) return "পার্টি কালেকশন";
   if (p.customerId) return "কাস্টমার কালেকশন";
-  return "নগদ বিক্রয়";
+  return "সাধারণ কালেকশন";
 }
 
 /**

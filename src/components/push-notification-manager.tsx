@@ -134,7 +134,7 @@ export function PushNotificationManager() {
         <div>
           <h2 className="text-base font-extrabold text-slate-900">🔔 ফোনে পুশ নোটিফিকেশন</h2>
           <p className="mt-1 text-sm leading-relaxed text-slate-600">
-            নতুন টাস্ক, অর্ডার, পেমেন্ট, খরচ বা গুরুত্বপূর্ণ আপডেট হলে অ্যাপ বন্ধ থাকলেও ফোনে জানাবে।
+            নতুন টাস্ক, অর্ডার, কালেকশন, খরচ বা গুরুত্বপূর্ণ আপডেট হলে অ্যাপ বন্ধ থাকলেও ফোনে জানাবে।
           </p>
         </div>
         <span

@@ -11,7 +11,7 @@ export default async function NewPaymentPage({ searchParams }: { searchParams: P
   const [parties, customers, accounts] = await Promise.all([listParties(), listCustomers(), listAccountsWithBalances()]);
   return (
     <div className="mx-auto max-w-lg">
-      <PageHead title="নতুন পেমেন্ট" sub="পার্টি → অর্ডার (ঐচ্ছিক) → পরিমাণ → মেথড → সেভ" />
+      <PageHead title="নতুন কালেকশন" sub="পার্টি/কাস্টমার → অর্ডার (ঐচ্ছিক) → পরিমাণ → টাকা কোথায় এসেছে → সেভ" />
       <Card className="p-4 sm:p-5">
         <PaymentForm parties={parties} customers={customers} accounts={accounts} initialPartyId={sp.party} initialCustomerId={sp.customer} />
       </Card>

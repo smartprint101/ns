@@ -11,8 +11,8 @@ import { cn } from "@/lib/utils";
 export const dynamic = "force-dynamic";
 
 const TXN_KIND_BN: Record<string, string> = {
-  PAYMENT_IN: "পেমেন্ট এসেছে",
-  PAYMENT_REVERSAL: "পেমেন্ট বাতিল",
+  PAYMENT_IN: "কালেকশন এসেছে",
+  PAYMENT_REVERSAL: "কালেকশন বাতিল",
   EXPENSE_OUT: "খরচ",
   EXPENSE_REVERSAL: "খরচ বাতিল",
   ADJUSTMENT: "অ্যাজাস্টমেন্ট",

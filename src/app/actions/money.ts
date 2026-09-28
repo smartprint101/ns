@@ -72,8 +72,8 @@ export async function cancelCollectionAction(id: string) {
   return run(() => collections.cancelCollection(user, id));
 }
 
-/** নগদ বিক্রয় / সরাসরি কালেকশন এন্ট্রি — কালেকশন হিসাবে সাথে সাথে দেখাবে। */
-export async function createCashSaleAction(input: { title: string; amount: number; accountId: string }) {
+/** সরাসরি কালেকশন এন্ট্রি — টাকা কোথায় এসেছে বেছে নিয়ে সাথে সাথে হিসাবে দেখাবে। */
+export async function createCashSaleAction(input: { title: string; amount: number; accountId: string; notes?: string }) {
   const user = await requireUser();
   return run(() => collections.createCashSale(user, input).then((p) => ({ id: p.id })));
 }

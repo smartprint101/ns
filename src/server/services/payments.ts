@@ -2,6 +2,7 @@ import { z } from "zod";
 import { and, desc, eq, gte, ilike, isNull, lte, or, sql } from "drizzle-orm";
 import { getDb, schema } from "@/server/db";
 import { BizError, findSimilarPayments, logEvent, notifyAll, type DuplicateMatch, type CurrentUser } from "./shared";
+import { createBookEntryTask } from "./tasks";
 import { bnMoney } from "@/lib/bn";
 import { m2 } from "@/lib/utils";
 
@@ -17,14 +18,14 @@ const allocationSchema = z
 
 const paymentSchema = z
   .object({
-    amount: z.coerce.number().positive("পেমেন্টের পরিমাণ দিন").max(1_000_000_000),
-    accountId: z.string().min(1, "পেমেন্ট মেথড বেছে নিন"),
+    amount: z.coerce.number().positive("কালেকশনের পরিমাণ দিন").max(1_000_000_000),
+    accountId: z.string().min(1, "টাকা কোথায় এসেছে বেছে নিন"),
     partyId: z.string().optional().or(z.literal("")),
     customerId: z.string().optional().or(z.literal("")),
     date: z.coerce.date().optional(),
     notes: z.string().trim().max(500).optional().or(z.literal("")),
     isAdvance: z.coerce.boolean().default(false),
-    inCollections: z.coerce.boolean().default(false),
+    inCollections: z.coerce.boolean().default(true),
     allocations: z.array(allocationSchema).max(30).default([]),
   })
   .refine((d) => d.partyId || d.customerId, { message: "পার্টি বা কাস্টমার বেছে নিন" });
@@ -50,7 +51,7 @@ export async function createPayment(actor: CurrentUser, rawInput: unknown, opts?
       return {
         ok: false,
         duplicateWarning: {
-          message: "এই পেমেন্টের মতো একটি এন্ট্রি আগে থেকেই আছে — আপনি কি নিশ্চিত?",
+          message: "এই কালেকশনের মতো একটি এন্ট্রি আগে থেকেই আছে — আপনি কি নিশ্চিত?",
           matches,
         },
       };
@@ -58,7 +59,7 @@ export async function createPayment(actor: CurrentUser, rawInput: unknown, opts?
   }
 
   const totalAlloc = m2(data.allocations.reduce((s, a) => s + a.amount, 0));
-  if (totalAlloc > data.amount + 0.009) throw new BizError("অর্ডারে বণ্টনের যোগফল পেমেন্টের পরিমাণের বেশি হতে পারবে না");
+  if (totalAlloc > data.amount + 0.009) throw new BizError("অর্ডারে বণ্টনের যোগফল কালেকশনের পরিমাণের বেশি হতে পারবে না");
 
   const payment = await db.transaction(async (tx) => {
     const [account] = await tx.select().from(accounts).where(and(eq(accounts.id, data.accountId), eq(accounts.active, true))).limit(1);
@@ -70,13 +71,13 @@ export async function createPayment(actor: CurrentUser, rawInput: unknown, opts?
       if (a.regularOrderId) {
         const [o] = await tx.select().from(regularOrders).where(eq(regularOrders.id, a.regularOrderId)).limit(1);
         if (!o) throw new BizError("রেগুলার অর্ডার পাওয়া যায়নি");
-        if (o.status === "CANCELLED") throw new BizError(`অর্ডার #${o.orderNo} বাতিল — এতে পেমেন্ট বসানো যাবে না`);
+        if (o.status === "CANCELLED") throw new BizError(`অর্ডার #${o.orderNo} বাতিল — এতে কালেকশন বসানো যাবে না`);
         if (data.customerId && o.customerId !== data.customerId) throw new BizError(`অর্ডার #${o.orderNo} এই কাস্টমারের নয়`);
         allocRows.push({ regularOrderId: o.id, packagingOrderId: null, amount: a.amount, label: `#${o.orderNo}` });
       } else {
         const [o] = await tx.select().from(packagingOrders).where(eq(packagingOrders.id, a.packagingOrderId!)).limit(1);
         if (!o) throw new BizError("প্যাকেজিং অর্ডার পাওয়া যায়নি");
-        if (o.status === "CANCELLED") throw new BizError(`PKG-${o.orderNo} বাতিল — এতে পেমেন্ট বসানো যাবে না`);
+        if (o.status === "CANCELLED") throw new BizError(`PKG-${o.orderNo} বাতিল — এতে কালেকশন বসানো যাবে না`);
         if (data.partyId && o.partyId !== data.partyId) throw new BizError(`PKG-${o.orderNo} এই পার্টির নয়`);
         allocRows.push({ regularOrderId: null, packagingOrderId: o.id, amount: a.amount, label: `PKG-${o.orderNo}` });
       }
@@ -124,7 +125,7 @@ export async function createPayment(actor: CurrentUser, rawInput: unknown, opts?
       amount: data.amount,
       kind: "PAYMENT_IN",
       paymentId: payment.id,
-      note: `${payerName} থেকে পেমেন্ট`,
+      note: `${payerName} থেকে কালেকশন`,
       date: payment.date,
     });
 
@@ -135,12 +136,18 @@ export async function createPayment(actor: CurrentUser, rawInput: unknown, opts?
       detail: `${payerName} → ${bnMoney(data.amount)} (${account.nameBn})${allocRows.length ? ` · বণ্টন: ${allocRows.map((x) => `${x.label} ${bnMoney(x.amount)}`).join(", ")}` : ""}`,
       actorId: actor.id,
     });
+    await createBookEntryTask(tx, actor, {
+      title: `কালেকশন ${bnMoney(data.amount)} — ${payerName}`,
+      description: `${account.nameBn}${data.notes ? ` · ${data.notes}` : ""}`,
+      linkEntity: "PAYMENT",
+      linkEntityId: payment.id,
+    });
     for (const a of allocRows) {
       await logEvent(tx, {
         entity: a.regularOrderId ? "REGULAR_ORDER" : "PACKAGING_ORDER",
         entityId: (a.regularOrderId ?? a.packagingOrderId)!,
         action: "PAYMENT",
-        detail: `পেমেন্ট ${bnMoney(a.amount)} (${account.nameBn}) · TXN-${payment.txnNo}`,
+        detail: `কালেকশন ${bnMoney(a.amount)} (${account.nameBn}) · TXN-${payment.txnNo}`,
         actorId: actor.id,
       });
     }
@@ -182,7 +189,7 @@ export async function createPayment(actor: CurrentUser, rawInput: unknown, opts?
 
     await notifyAll(tx, actor.id, {
       type: "PAYMENT_ADDED",
-      message: `${actor.name}: ${payerName} থেকে ${bnMoney(data.amount)} পেমেন্ট (${account.nameBn})`,
+      message: `${actor.name}: ${payerName} থেকে ${bnMoney(data.amount)} কালেকশন (${account.nameBn})`,
       link: `/payments/${payment.id}`,
     });
     return payment;
@@ -197,8 +204,8 @@ export async function voidPayment(actor: CurrentUser, paymentId: string, reason:
   const db = await getDb();
   return db.transaction(async (tx) => {
     const [payment] = await tx.select().from(payments).where(eq(payments.id, paymentId)).limit(1).for("update");
-    if (!payment) throw new BizError("পেমেন্ট পাওয়া যায়নি");
-    if (payment.voidedAt) throw new BizError("এই পেমেন্ট ইতোমধ্যে বাতিল");
+    if (!payment) throw new BizError("কালেকশন পাওয়া যায়নি");
+    if (payment.voidedAt) throw new BizError("এই কালেকশন ইতোমধ্যে বাতিল");
     await tx
       .update(payments)
       .set({ voidedAt: new Date(), voidReason: reason.trim(), updatedById: actor.id })
@@ -208,7 +215,7 @@ export async function voidPayment(actor: CurrentUser, paymentId: string, reason:
       amount: m2(-payment.amount),
       kind: "PAYMENT_REVERSAL",
       paymentId: payment.id,
-      note: `পেমেন্ট বাতিল — ${reason.trim()}`,
+      note: `কালেকশন বাতিল — ${reason.trim()}`,
     });
     await logEvent(tx, {
       entity: "PAYMENT",

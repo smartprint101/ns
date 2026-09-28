@@ -2,6 +2,7 @@ import { z } from "zod";
 import { and, asc, desc, eq, sql } from "drizzle-orm";
 import { getDb, schema } from "@/server/db";
 import { BizError, logEvent, notifyAll, type CurrentUser } from "./shared";
+import { createBookEntryTask } from "./tasks";
 import { bnMoney } from "@/lib/bn";
 
 const { courierCollections, payments, accountTransactions, accounts } = schema;
@@ -97,6 +98,12 @@ export async function receiveCollection(actor: CurrentUser, input: unknown) {
       detail: `প্রত্যাশিত ${bnMoney(col.expectedAmount)} · রিসিভ ${bnMoney(data.receivedAmount)} (${account.nameBn})`,
       actorId: actor.id,
     });
+    await createBookEntryTask(tx, actor, {
+      title: `কুরিয়ার কালেকশন ${bnMoney(data.receivedAmount)} — ${col.title}`,
+      description: `টাকা এসেছে: ${account.nameBn}`,
+      linkEntity: "COLLECTION",
+      linkEntityId: data.id,
+    });
     await notifyAll(tx, actor.id, {
       type: "COLLECTION",
       message: `${actor.name}: কুরিয়ার কালেকশন ${bnMoney(data.receivedAmount)} রিসিভ করেছেন (${col.title})`,
@@ -158,16 +165,18 @@ export async function pendingCollectionSummary() {
   return { count: row?.count ?? 0, sum: row?.sum ?? 0 };
 }
 
-// ── নগদ বিক্রয় / সরাসরি কালেকশন এন্ট্রি ─────────────────────────────────────
+// ── সরাসরি কালেকশন এন্ট্রি ──────────────────────────────────────────────────
 const cashSaleSchema = z.object({
-  title: z.string().trim().min(2, "বিবরণ লিখুন (যেমন: নগদ বিক্রয় — দোকান)"),
+  title: z.string().trim().min(2, "আয়ের নাম লিখুন (যেমন: কাস্টমার অ্যাডভান্স বা বকেয়া)"),
   amount: z.coerce.number().positive("টাকার পরিমাণ দিন"),
-  accountId: z.string().min(1, "টাকা কোথায় জমা হলো বেছে নিন"),
+  accountId: z.string().min(1, "টাকা কোথায় এসেছে বেছে নিন"),
+  notes: z.string().trim().max(500).optional().or(z.literal("")),
 });
 
 export async function createCashSale(actor: CurrentUser, input: unknown) {
   const data = cashSaleSchema.parse(input);
   const db = await getDb();
+  const description = data.notes ? `${data.title} — ${data.notes}` : data.title;
   return db.transaction(async (tx) => {
     const [account] = await tx.select().from(accounts).where(and(eq(accounts.id, data.accountId), eq(accounts.active, true))).limit(1);
     if (!account) throw new BizError("অ্যাকাউন্ট পাওয়া যায়নি");
@@ -179,7 +188,7 @@ export async function createCashSale(actor: CurrentUser, input: unknown) {
         source: "MANUAL",
         inCollections: true,
         date: new Date(),
-        notes: data.title,
+        notes: description,
         createdById: actor.id,
         updatedById: actor.id,
       })
@@ -189,15 +198,21 @@ export async function createCashSale(actor: CurrentUser, input: unknown) {
       amount: data.amount,
       kind: "PAYMENT_IN",
       paymentId: payment.id,
-      note: data.title,
+      note: description,
       date: payment.date,
     });
     await logEvent(tx, {
       entity: "PAYMENT",
       entityId: payment.id,
       action: "CREATED",
-      detail: `${data.title} · ${bnMoney(data.amount)} (${account.nameBn})`,
+      detail: `${description} · ${bnMoney(data.amount)} (${account.nameBn})`,
       actorId: actor.id,
+    });
+    await createBookEntryTask(tx, actor, {
+      title: `কালেকশন ${bnMoney(data.amount)} — ${data.title}`,
+      description: `${account.nameBn}${data.notes ? ` · ${data.notes}` : ""}`,
+      linkEntity: "PAYMENT",
+      linkEntityId: payment.id,
     });
     await notifyAll(tx, actor.id, {
       type: "PAYMENT_ADDED",
@@ -224,7 +239,6 @@ export async function listCollectionLedger() {
     .leftJoin(schema.packagingParties, eq(schema.packagingParties.id, payments.partyId))
     .leftJoin(schema.regularCustomers, eq(schema.regularCustomers.id, payments.customerId))
     .innerJoin(schema.users, eq(schema.users.id, payments.createdById))
-    .where(eq(payments.inCollections, true))
     .orderBy(desc(payments.date), desc(payments.createdAt))
     .limit(300);
 }

@@ -365,6 +365,26 @@ export const courierCollections = pgTable(
   (t) => [index("cc_status_idx").on(t.status, t.createdAt)]
 );
 
+// ── Creditors / Payables ─────────────────────────────────────────────────────
+export const creditors = pgTable(
+  "creditors",
+  {
+    id: id(),
+    name: varchar("name", { length: 200 }).notNull(),
+    phone: varchar("phone", { length: 40 }),
+    amount: money("amount").notNull(),
+    notes: text("notes"),
+    status: recordStatusEnum("status").notNull().default("ACTIVE"),
+    createdById: text("created_by_id")
+      .notNull()
+      .references(() => users.id),
+    updatedById: text("updated_by_id").references(() => users.id),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [index("cred_status_idx").on(t.status, t.createdAt), index("cred_name_idx").on(t.name)]
+);
+
 // ── Tasks ────────────────────────────────────────────────────────────────────
 export const tasks = pgTable(
   "tasks",
@@ -465,6 +485,8 @@ export const userRelations = relations(users, ({ many }) => ({
   tasksCompleted: many(tasks, { relationName: "taskCompleted" }),
   collectionsCreated: many(courierCollections, { relationName: "ccCreated" }),
   collectionsReceived: many(courierCollections, { relationName: "ccReceived" }),
+  creditorsCreated: many(creditors, { relationName: "credCreated" }),
+  creditorsUpdated: many(creditors, { relationName: "credUpdated" }),
   notifications: many(notifications),
   pushSubscriptions: many(pushSubscriptions),
   adjustments: many(adjustments),
@@ -565,6 +587,11 @@ export const courierCollectionRelations = relations(courierCollections, ({ one }
   receivedBy: one(users, { fields: [courierCollections.receivedById], references: [users.id], relationName: "ccReceived" }),
 }));
 
+export const creditorRelations = relations(creditors, ({ one }) => ({
+  createdBy: one(users, { fields: [creditors.createdById], references: [users.id], relationName: "credCreated" }),
+  updatedBy: one(users, { fields: [creditors.updatedById], references: [users.id], relationName: "credUpdated" }),
+}));
+
 export const taskRelations = relations(tasks, ({ one, many }) => ({
   assignedTo: one(users, { fields: [tasks.assignedToId], references: [users.id], relationName: "taskAssigned" }),
   createdBy: one(users, { fields: [tasks.createdById], references: [users.id], relationName: "taskCreated" }),
@@ -599,6 +626,7 @@ export type Account = typeof accounts.$inferSelect;
 export type AccountTransaction = typeof accountTransactions.$inferSelect;
 export type Adjustment = typeof adjustments.$inferSelect;
 export type CourierCollection = typeof courierCollections.$inferSelect;
+export type Creditor = typeof creditors.$inferSelect;
 export type Task = typeof tasks.$inferSelect;
 export type Notification = typeof notifications.$inferSelect;
 export type PushSubscription = typeof pushSubscriptions.$inferSelect;

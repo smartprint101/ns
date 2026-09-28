@@ -7,9 +7,58 @@ import { AccountChips } from "./account-chips";
 import { useSubmit } from "./use-submit";
 import { createCollectionAction, receiveCollectionAction, cancelCollectionAction, createCashSaleAction } from "@/app/actions/money";
 import { bnMoney } from "@/lib/bn";
-import { toast } from "sonner";
 
 type AccountRow = { id: string; key: string; nameBn: string; kind: string; balance: number };
+
+/** সরাসরি টাকা আসার এন্ট্রি — আলাদা পেমেন্ট অপশন নয়, সবই কালেকশন। */
+export function DirectCollectionForm({ accounts, onDone }: { accounts: AccountRow[]; onDone?: () => void }) {
+  const { pending, submit, router } = useSubmit();
+  const [title, setTitle] = React.useState("");
+  const [amount, setAmount] = React.useState("");
+  const [notes, setNotes] = React.useState("");
+  const [accountId, setAccountId] = React.useState("");
+  const amt = Number(amount) || 0;
+
+  const reset = () => {
+    setTitle("");
+    setAmount("");
+    setNotes("");
+    setAccountId("");
+  };
+
+  return (
+    <form
+      className="space-y-4"
+      onSubmit={(e) => {
+        e.preventDefault();
+        submit(() => createCashSaleAction({ title: title.trim(), amount: amt, accountId, notes: notes.trim() }), {
+          success: "কালেকশন সেভ হয়েছে",
+          onOk: () => {
+            reset();
+            if (onDone) onDone();
+            else router.push("/collections?tab=done");
+          },
+        });
+      }}
+    >
+      <Field label="আয়ের নাম / কোথা থেকে কালেকশন" required hint="যেমন: কাস্টমার অ্যাডভান্স, বকেয়া, দোকান বিক্রয়">
+        <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="কোথা থেকে টাকা এলো…" autoFocus />
+      </Field>
+      <Field label="কত টাকা (৳)" required>
+        <Input value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="যেমন 50000" inputMode="decimal" />
+      </Field>
+      <Field label="টাকা কোথায় এসেছে" required>
+        <AccountChips accounts={accounts} value={accountId} onChange={setAccountId} />
+      </Field>
+      <Field label="বিবরণ" hint="ঐচ্ছিক — না দিলেও চলবে">
+        <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} placeholder="প্রয়োজন হলে বিস্তারিত লিখুন…" />
+      </Field>
+      <Button type="submit" full size="lg" disabled={pending || !title.trim() || amt <= 0 || !accountId}>
+        {pending ? <Spinner /> : null} কালেকশন সেভ করুন{amt > 0 ? ` (${bnMoney(amt)})` : ""}
+      </Button>
+    </form>
+  );
+}
 
 export function CollectionForm({ onDone }: { onDone?: () => void }) {
   const { pending, submit, router } = useSubmit();
@@ -95,7 +144,7 @@ export function CollectionActions({
           <Field label="কত টাকা এলো? (৳)" required>
             <Input value={receivedAmount} onChange={(e) => setReceivedAmount(e.target.value)} inputMode="decimal" autoFocus />
           </Field>
-          <Field label="টাকা কোথায় জমা হলো" required>
+          <Field label="টাকা কোথায় এসেছে" required>
             <AccountChips accounts={accounts} value={accountId} onChange={setAccountId} />
           </Field>
           <Button
@@ -143,41 +192,47 @@ export function CollectionActions({
   );
 }
 
-/** নগদ বিক্রয় / সরাসরি টাকা জমার দ্রুত এন্ট্রি — কালেকশন হিসাবে সাথে সাথে উঠবে। */
+/** সরাসরি কালেকশন দ্রুত এন্ট্রি — কালেকশন হিসাবে সাথে সাথে উঠবে। */
 export function CashSaleButton({ accounts }: { accounts: AccountRow[] }) {
   const { pending, submit, refresh } = useSubmit();
   const [open, setOpen] = React.useState(false);
-  const [title, setTitle] = React.useState("নগদ বিক্রয়");
+  const [title, setTitle] = React.useState("");
   const [amount, setAmount] = React.useState("");
+  const [notes, setNotes] = React.useState("");
   const [accountId, setAccountId] = React.useState("");
   const amt = Number(amount) || 0;
 
   return (
     <>
       <Button variant="secondary" size="md" onClick={() => setOpen(true)}>
-        ৳ নগদ বিক্রয়
+        ৳ কালেকশন
       </Button>
-      <Sheet open={open} onClose={() => setOpen(false)} title="নগদ বিক্রয় / টাকা জমা">
+      <Sheet open={open} onClose={() => setOpen(false)} title="কালেকশন">
         <div className="space-y-4">
-          <Field label="বিবরণ" required hint="যেমন: নগদ বিক্রয় — দোকান">
-            <Input value={title} onChange={(e) => setTitle(e.target.value)} autoFocus />
+          <Field label="আয়ের নাম / কোথা থেকে কালেকশন" required hint="যেমন: কাস্টমার অ্যাডভান্স বা বকেয়া">
+            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="কোথা থেকে টাকা এলো…" autoFocus />
           </Field>
           <Field label="কত টাকা (৳)" required>
             <Input value={amount} onChange={(e) => setAmount(e.target.value)} inputMode="decimal" placeholder="০" />
           </Field>
-          <Field label="টাকা কোথায় জমা হলো" required>
+          <Field label="টাকা কোথায় এসেছে" required>
             <AccountChips accounts={accounts} value={accountId} onChange={setAccountId} />
+          </Field>
+          <Field label="বিবরণ" hint="ঐচ্ছিক">
+            <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} placeholder="প্রয়োজন হলে বিস্তারিত লিখুন…" />
           </Field>
           <Button
             full
             size="lg"
             disabled={pending || amt <= 0 || !accountId || title.trim().length < 2}
             onClick={() =>
-              submit(() => createCashSaleAction({ title: title.trim(), amount: amt, accountId }), {
-                success: "কালেকশনে এড হয়েছে",
+              submit(() => createCashSaleAction({ title: title.trim(), amount: amt, accountId, notes: notes.trim() }), {
+                success: "কালেকশন সেভ হয়েছে",
                 onOk: () => {
                   setOpen(false);
+                  setTitle("");
                   setAmount("");
+                  setNotes("");
                   setAccountId("");
                   refresh();
                 },
