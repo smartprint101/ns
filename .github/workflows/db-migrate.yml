@@ -1,0 +1,77 @@
+name: DB Migrate
+
+# এনএস ট্রেডার্স — production database migration runner.
+# Runs `npm run db:migrate` (drizzle migrations + first-boot seed) against the
+# DATABASE_URL repository secret. Safe to re-run (idempotent).
+#
+# Required repository secrets (Settings → Secrets and variables → Actions):
+#   DATABASE_URL   — Neon/Postgres connection string
+#   OWNER_PASSWORD — password for the first owner login (username: abdurrahman)
+# Optional:
+#   STAFF_PASSWORD — creates staff users সাইফুল/রহমান/নিরব
+
+on:
+  push:
+    branches: ["arena/**"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: db-migrate
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check required secrets
+        env:
+          DB_URL: ${{ secrets.DATABASE_URL }}
+          OWNER_PW: ${{ secrets.OWNER_PASSWORD }}
+        run: |
+          if [ -z "$DB_URL" ]; then
+            echo "::error::DATABASE_URL secret is missing. Add it in Settings → Secrets and variables → Actions → New repository secret"
+            exit 1
+          fi
+          if [ -z "$OWNER_PW" ]; then
+            echo "::error::OWNER_PASSWORD secret is missing. Add it in Settings → Secrets and variables → Actions → New repository secret"
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Apply migrations + seed
+        env:
+          DB_DRIVER: postgres
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          SEED_ADMIN_NAME: abdurrahman
+          SEED_ADMIN_PASSWORD: ${{ secrets.OWNER_PASSWORD }}
+          SEED_STAFF_PASSWORD: ${{ secrets.STAFF_PASSWORD }}
+          SEED_DEMO: "0"
+        run: npm run db:migrate
+
+      - name: Verify database
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          cat > /tmp/verify.mjs <<'EOF'
+          import { Pool } from "pg";
+          const pool = new Pool({ connectionString: process.env.DATABASE_URL, max: 1 });
+          const t = await pool.query("select table_name from information_schema.tables where table_schema = 'public' order by 1");
+          console.log(`TABLES (${t.rows.length}): ${t.rows.map((r) => r.table_name).join(", ")}`);
+          const u = await pool.query("select role, active from users");
+          console.log(`USERS (${u.rows.length}): ${JSON.stringify(u.rows)}`);
+          const a = await pool.query("select key from accounts order by sort_order");
+          console.log(`ACCOUNTS (${a.rows.length}): ${a.rows.map((r) => r.key).join(", ")}`);
+          await pool.end();
+          EOF
+          node /tmp/verify.mjs
