@@ -43,7 +43,7 @@ export default async function SettingsPage() {
           <p><b className="text-slate-900">কম্পিউটার (Chrome/Edge):</b> address bar-এর Install আইকন → Install।</p>
         </div>
         <p className="mt-3 rounded-xl bg-white px-3 py-2 text-xs font-semibold text-brand-800 ring-1 ring-inset ring-brand-200">
-          ইনস্টল হয়ে গেলে হোম স্ক্রিনের “এনএস” আইকন থেকে সরাসরি অ্যাপের মতো খুলবে। চারজনই নিজের ফোনে একইভাবে ইনস্টল করবেন।
+          ইনস্টল হয়ে গেলে হোম স্ক্রিনের “এনএস” আইকন থেকে সরাসরি অ্যাপের মতো খুলবে। এরপর নোটিফিকেশন পেজে গিয়ে “এই ডিভাইসে নোটিফিকেশন চালু করুন” চাপুন।
         </p>
       </Card>
 

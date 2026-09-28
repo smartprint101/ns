@@ -2,6 +2,7 @@ import { eq, and, isNull, gte, sql } from "drizzle-orm";
 import type { DB } from "@/server/db";
 import { schema } from "@/server/db";
 import { ZodError } from "zod";
+import { sendPushToUsers } from "./push-notifications";
 
 export type Tx = Parameters<Parameters<DB["transaction"]>[0]>[0];
 export type AnyDb = DB | Tx;
@@ -45,7 +46,15 @@ export async function notifyAll(
     .from(schema.users)
     .where(and(eq(schema.users.active, true)));
   const rows = users.filter((u) => u.id !== exceptUserId).map((u) => ({ userId: u.id, ...n, link: n.link ?? null }));
-  if (rows.length) await db.insert(schema.notifications).values(rows);
+  if (rows.length) {
+    await db.insert(schema.notifications).values(rows);
+    try {
+      await sendPushToUsers(db, rows.map((row) => row.userId), n);
+    } catch (error) {
+      // A push-provider outage must never roll back the business action or in-app notification.
+      console.error("[push] notification fan-out failed", error);
+    }
+  }
 }
 
 export async function notifyUser(
@@ -54,6 +63,11 @@ export async function notifyUser(
   n: { type: string; message: string; link?: string | null }
 ): Promise<void> {
   await db.insert(schema.notifications).values({ userId, ...n, link: n.link ?? null });
+  try {
+    await sendPushToUsers(db, [userId], n);
+  } catch (error) {
+    console.error("[push] notification delivery failed", error);
+  }
 }
 
 export async function unreadCount(db: AnyDb, userId: string): Promise<number> {

@@ -404,6 +404,31 @@ export const notifications = pgTable(
   (t) => [index("notif_user_idx").on(t.userId, t.readAt)]
 );
 
+/** One row per browser/device that a user has enabled for Web Push. */
+export const pushSubscriptions = pgTable(
+  "push_subscriptions",
+  {
+    id: id(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    endpoint: text("endpoint").notNull().unique(),
+    p256dh: text("p256dh").notNull(),
+    auth: text("auth").notNull(),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [index("push_subscription_user_idx").on(t.userId)]
+);
+
+/** Stable VAPID key pair shared by all app instances; the private key never reaches the client. */
+export const pushSettings = pgTable("push_settings", {
+  id: varchar("id", { length: 20 }).primaryKey(),
+  publicKey: text("public_key").notNull(),
+  privateKey: text("private_key").notNull(),
+  createdAt: createdAt(),
+});
+
 export const eventLogs = pgTable(
   "event_logs",
   {
@@ -437,6 +462,7 @@ export const userRelations = relations(users, ({ many }) => ({
   collectionsCreated: many(courierCollections, { relationName: "ccCreated" }),
   collectionsReceived: many(courierCollections, { relationName: "ccReceived" }),
   notifications: many(notifications),
+  pushSubscriptions: many(pushSubscriptions),
   adjustments: many(adjustments),
 }));
 
@@ -546,6 +572,10 @@ export const notificationRelations = relations(notifications, ({ one }) => ({
   user: one(users, { fields: [notifications.userId], references: [users.id] }),
 }));
 
+export const pushSubscriptionRelations = relations(pushSubscriptions, ({ one }) => ({
+  user: one(users, { fields: [pushSubscriptions.userId], references: [users.id] }),
+}));
+
 export const eventLogRelations = relations(eventLogs, ({ one }) => ({
   actor: one(users, { fields: [eventLogs.actorId], references: [users.id] }),
 }));
@@ -567,4 +597,5 @@ export type Adjustment = typeof adjustments.$inferSelect;
 export type CourierCollection = typeof courierCollections.$inferSelect;
 export type Task = typeof tasks.$inferSelect;
 export type Notification = typeof notifications.$inferSelect;
+export type PushSubscription = typeof pushSubscriptions.$inferSelect;
 export type EventLog = typeof eventLogs.$inferSelect;

@@ -5,6 +5,7 @@ import { getDb, schema } from "@/server/db";
 import { PageHead } from "@/components/page-head";
 import { Badge, Card, Empty } from "@/components/ui";
 import { MarkReadButton } from "@/components/forms/notification-client";
+import { PushNotificationManager } from "@/components/push-notification-manager";
 import { fmtDateTime } from "@/lib/dates";
 
 export const dynamic = "force-dynamic";
@@ -27,6 +28,7 @@ export default async function NotificationsPage() {
         sub={unread > 0 ? `${unread.toLocaleString("bn-BD")}টি নতুন` : "সব পড়া হয়েছে"}
         right={unread > 0 ? <MarkReadButton /> : undefined}
       />
+      <PushNotificationManager />
       {rows.length === 0 ? (
         <Empty text="কোনো নোটিফিকেশন নেই" />
       ) : (
