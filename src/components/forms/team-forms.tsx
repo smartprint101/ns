@@ -28,7 +28,7 @@ export function AddUserForm({ onDone }: { onDone?: () => void }) {
       }}
     >
       <Field label="নাম" required>
-        <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="যেমন: সাইফুল" autoFocus />
+        <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="যেমন: Saiful" autoFocus />
       </Field>
       <Field label="পাসওয়ার্ড" required hint="কমপক্ষে ৪ অক্ষর — পরে Team থেকে রিসেট করা যাবে">
         <Input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="পাসওয়ার্ড" />

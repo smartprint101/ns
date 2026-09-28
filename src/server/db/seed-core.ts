@@ -28,7 +28,7 @@ export async function ensureAccounts(db: DB): Promise<void> {
 }
 
 export async function ensureOwnerUser(db: DB): Promise<void> {
-  const name = (process.env.SEED_ADMIN_NAME || "শরীফুল").trim();
+  const name = (process.env.SEED_ADMIN_NAME || "Shariful").trim();
   const password = process.env.SEED_ADMIN_PASSWORD;
   if (!password) {
     console.warn("[seed] SEED_ADMIN_PASSWORD missing — owner user not created. Set it in .env and run `npm run db:seed`.");
@@ -45,7 +45,7 @@ export async function ensureOwnerUser(db: DB): Promise<void> {
  * Seed-এর ডিফল্ট ৩ জন স্টাফ। প্রত্যেকের নাম/পাসওয়ার্ড আলাদা env-এ রাখা যায়।
  * পুরোনো deployment-এর জন্য SEED_STAFF_PASSWORD shared fallback হিসেবেও কাজ করে।
  */
-export const DEFAULT_STAFF_NAMES = ["সাইফুল", "রহমান", "নিরব"] as const;
+export const DEFAULT_STAFF_NAMES = ["Saiful", "Rahman", "Nirob"] as const;
 
 export async function ensureStaffUsers(db: DB): Promise<void> {
   const sharedPassword = process.env.SEED_STAFF_PASSWORD;
