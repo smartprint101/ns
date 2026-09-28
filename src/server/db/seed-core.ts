@@ -55,19 +55,18 @@ export async function ensureStaffUsers(db: DB): Promise<void> {
     const name = (process.env[`SEED_STAFF_${slot}_NAME`] || defaultName).trim();
     const password = process.env[`SEED_STAFF_${slot}_PASSWORD`] || sharedPassword;
 
-    if (!password) {
-      console.warn(
-        `[seed] SEED_STAFF_${slot}_PASSWORD missing — ${name} তৈরি হয়নি। Owner টিম পেজ থেকে যোগ করতে পারবেন।`
-      );
-      continue;
-    }
-
     const existing = await db.select({ id: users.id }).from(users).where(eq(users.name, name)).limit(1);
     if (existing.length > 0) continue;
 
-    const passwordHash = await bcrypt.hash(password, 10);
+    // পাসওয়ার্ড env-এ না থাকলেও ইউজার তৈরি হবে (random unusable password) —
+    // যাতে টাস্ক assign-এর তালিকায় সবার নাম থাকে। লগইন দরকার হলে Owner টিম পেজ থেকে পাসওয়ার্ড সেট করবেন।
+    const passwordHash = await bcrypt.hash(password ?? crypto.randomUUID(), 10);
     await db.insert(users).values({ name, passwordHash, role: "STAFF", active: true });
-    console.log(`[seed] Staff user created: ${name}`);
+    if (password) {
+      console.log(`[seed] Staff user created: ${name}`);
+    } else {
+      console.log(`[seed] Staff user created (নাম বাছাইয়ের জন্য, লগইন পাসওয়ার্ড ছাড়া): ${name}`);
+    }
   }
 }
 

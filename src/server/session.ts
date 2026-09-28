@@ -35,3 +35,29 @@ export async function verifySessionToken(token: string): Promise<SessionPayload 
     return null;
   }
 }
+
+// ── ডিভাইস আইডেন্টিটি ────────────────────────────────────────────────────────
+// লগইন যে অ্যাকাউন্ট দিয়েই হোক, প্রতিটি ডিভাইসে "আমি কে" — সেটা আলাদা কুকিতে থাকে।
+export const IDENTITY_COOKIE = "ns_identity";
+export const IDENTITY_MAX_AGE = 60 * 60 * 24 * 365; // ১ বছর
+const ONE_YEAR = "365d";
+
+export type IdentityPayload = { userId: string };
+
+export async function signIdentity(payload: IdentityPayload): Promise<string> {
+  return new SignJWT({ ...payload })
+    .setProtectedHeader({ alg: "HS256" })
+    .setIssuedAt()
+    .setExpirationTime(ONE_YEAR)
+    .sign(key());
+}
+
+export async function verifyIdentityToken(token: string): Promise<IdentityPayload | null> {
+  try {
+    const { payload } = await jwtVerify(token, key());
+    if (!payload.userId) return null;
+    return { userId: String(payload.userId) };
+  } catch {
+    return null;
+  }
+}

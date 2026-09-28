@@ -1,7 +1,9 @@
-import { requireUser } from "@/server/auth";
+import { requireUserWithIdentity } from "@/server/auth";
 import { getDb } from "@/server/db";
 import { unreadCount } from "@/server/services/shared";
+import { listActiveUsers } from "@/server/services/users";
 import { AppShell, type NavGroup, type NavLink } from "@/components/app-shell";
+import { IdentityGate } from "@/components/forms/identity-picker";
 
 export const dynamic = "force-dynamic";
 
@@ -70,12 +72,14 @@ const moreGroups: NavGroup[] = [
 ];
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  const user = await requireUser();
+  const { user, identified } = await requireUserWithIdentity();
   const db = await getDb();
   const count = await unreadCount(db, user.id);
+  const teamUsers = identified ? null : await listActiveUsers();
   return (
     <AppShell user={user} unreadCount={count} groups={groups} bottomNav={bottomNav} moreGroups={moreGroups}>
       {children}
+      {teamUsers && <IdentityGate users={teamUsers} />}
     </AppShell>
   );
 }
